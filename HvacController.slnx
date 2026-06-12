@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="HvacController.Tests/HvacController.Tests.csproj" />
+  <Project Path="HvacController/HvacController.csproj" />
+</Solution>

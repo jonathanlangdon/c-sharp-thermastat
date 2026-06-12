@@ -70,6 +70,11 @@ public sealed class ThermostatEngine
             fan = true;
         }
 
+        if (!heat && !cool && _settings.IdleFanOn)
+        {
+            fan = true;
+        }
+
         return Transition(previousState, input.Now, new ThermostatOutput
         {
             Heat = heat,

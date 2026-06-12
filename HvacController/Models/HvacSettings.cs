@@ -14,4 +14,5 @@ public sealed record HvacSettings
 
     public bool FanOnWithCooling { get; init; } = true;
     public bool FanOnWithHeat { get; init; } = false;
+    public bool IdleFanOn { get; init; } = true;
 }

@@ -121,7 +121,7 @@ public sealed class ThermostatEngine
                 return true;
             }
 
-            return absoluteHumidity >= _settings.AbsoluteHumidityCoolingThreshold;
+            return absoluteHumidity > _settings.AbsoluteHumidityCoolingOffThreshold;
         }
 
         var minOffSatisfied =
@@ -129,7 +129,7 @@ public sealed class ThermostatEngine
             input.Now - state.LastCoolStopped >= _settings.MinimumOffTime;
 
         return minOffSatisfied &&
-               absoluteHumidity >= _settings.AbsoluteHumidityCoolingThreshold;
+            absoluteHumidity >= _settings.AbsoluteHumidityCoolingOnThreshold;
     }
 
     private static (ThermostatOutput Output, ThermostatRuntimeState State) SafeOff(

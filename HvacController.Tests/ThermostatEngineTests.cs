@@ -11,7 +11,8 @@ public sealed class ThermostatEngineTests
         var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
         var engine = new ThermostatEngine(new HvacSettings
         {
-            AbsoluteHumidityCoolingThreshold = 9.0,
+            AbsoluteHumidityCoolingOnThreshold = 9.2,
+            AbsoluteHumidityCoolingOffThreshold = 8.8,
             IdleFanOn = false
         });
 
@@ -38,7 +39,8 @@ public sealed class ThermostatEngineTests
         var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
         var engine = new ThermostatEngine(new HvacSettings
         {
-            AbsoluteHumidityCoolingThreshold = 9.0
+            AbsoluteHumidityCoolingOnThreshold = 9.2,
+            AbsoluteHumidityCoolingOffThreshold = 8.8
         });
 
         var input = new ThermostatInput
@@ -56,6 +58,75 @@ public sealed class ThermostatEngineTests
         Assert.False(output.Heat);
         Assert.True(output.Cool);
         Assert.True(output.Fan);
+    }
+
+    [Fact]
+    public void Cooling_WhenAlreadyRunning_ContinuesUntilHumidityFallsBelowOffThreshold()
+    {
+        var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
+        var engine = new ThermostatEngine(new HvacSettings
+        {
+            AbsoluteHumidityCoolingOnThreshold = 9.2,
+            AbsoluteHumidityCoolingOffThreshold = 8.8,
+            MinimumRunTime = TimeSpan.FromMinutes(5)
+        });
+
+        var previousState = ThermostatRuntimeState.Empty with
+        {
+            WasCooling = true,
+            LastCoolStarted = now.AddMinutes(-10)
+        };
+
+        var input = new ThermostatInput
+        {
+            CurrentTempF = 72,
+            CurrentHumidity = 46,
+            SetpointF = 72,
+            Mode = HvacMode.Cool,
+            Now = now,
+            LastSensorUpdate = now
+        };
+
+        var (output, _) = engine.Evaluate(input, previousState);
+
+        Assert.False(output.Heat);
+        Assert.True(output.Cool);
+        Assert.True(output.Fan);
+    }
+
+    [Fact]
+    public void Cooling_WhenAlreadyRunningAndHumidityFallsBelowOffThreshold_TurnsCoolingOff()
+    {
+        var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
+        var engine = new ThermostatEngine(new HvacSettings
+        {
+            AbsoluteHumidityCoolingOnThreshold = 9.2,
+            AbsoluteHumidityCoolingOffThreshold = 8.8,
+            MinimumRunTime = TimeSpan.FromMinutes(5),
+            IdleFanOn = false
+        });
+
+        var previousState = ThermostatRuntimeState.Empty with
+        {
+            WasCooling = true,
+            LastCoolStarted = now.AddMinutes(-10)
+        };
+
+        var input = new ThermostatInput
+        {
+            CurrentTempF = 72,
+            CurrentHumidity = 44,
+            SetpointF = 72,
+            Mode = HvacMode.Cool,
+            Now = now,
+            LastSensorUpdate = now
+        };
+
+        var (output, _) = engine.Evaluate(input, previousState);
+
+        Assert.False(output.Heat);
+        Assert.False(output.Cool);
+        Assert.False(output.Fan);
     }
 
     [Fact]

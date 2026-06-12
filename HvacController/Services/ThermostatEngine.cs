@@ -27,30 +27,14 @@ public sealed class ThermostatEngine
         }
 
         var temp = input.CurrentTempF.Value;
-        var heat = false;
-        var cool = false;
-        var fan = input.FanAlwaysOn;
 
-        if (input.Mode == HvacMode.Off)
-        {
-            return Transition(previousState, input.Now, new ThermostatOutput
-            {
-                Heat = false,
-                Cool = false,
-                Fan = fan,
-                Reason = "Mode off"
-            });
-        }
+        var heat = input.Mode == HvacMode.Heat
+            && ShouldHeat(input, previousState, temp);
 
-        if (input.Mode is HvacMode.Heat or HvacMode.Auto)
-        {
-            heat = ShouldHeat(input, previousState, temp);
-        }
+        var cool = input.Mode == HvacMode.Cool
+            && ShouldCool(input, previousState, temp);
 
-        if (input.Mode is HvacMode.Cool or HvacMode.Auto)
-        {
-            cool = ShouldCool(input, previousState, temp);
-        }
+        var fan = false;
 
         // Hard safety rule.
         if (heat && cool)
@@ -93,7 +77,7 @@ public sealed class ThermostatEngine
         {
             var minRunSatisfied =
                 state.LastHeatStarted is null ||
-                input.Now - state.LastHeatStarted >= _settings.MinimumHeatRunTime;
+                input.Now - state.LastHeatStarted >= _settings.MinimumRunTime;
 
             if (!minRunSatisfied)
             {
@@ -105,7 +89,7 @@ public sealed class ThermostatEngine
 
         var minOffSatisfied =
             state.LastHeatStopped is null ||
-            input.Now - state.LastHeatStopped >= _settings.MinimumHeatOffTime;
+            input.Now - state.LastHeatStopped >= _settings.MinimumOffTime;
 
         return minOffSatisfied &&
                temp <= input.SetpointF - _settings.TemperatureDifferentialF;
@@ -120,7 +104,7 @@ public sealed class ThermostatEngine
         {
             var minRunSatisfied =
                 state.LastCoolStarted is null ||
-                input.Now - state.LastCoolStarted >= _settings.MinimumCoolRunTime;
+                input.Now - state.LastCoolStarted >= _settings.MinimumRunTime;
 
             if (!minRunSatisfied)
             {
@@ -132,7 +116,7 @@ public sealed class ThermostatEngine
 
         var minOffSatisfied =
             state.LastCoolStopped is null ||
-            input.Now - state.LastCoolStopped >= _settings.MinimumCoolOffTime;
+            input.Now - state.LastCoolStopped >= _settings.MinimumOffTime;
 
         return minOffSatisfied &&
                temp >= input.SetpointF + _settings.TemperatureDifferentialF;

@@ -4,11 +4,8 @@ public sealed record HvacSettings
 {
     public double TemperatureDifferentialF { get; init; } = 1.0;
 
-    public TimeSpan MinimumCoolRunTime { get; init; } = TimeSpan.FromMinutes(5);
-    public TimeSpan MinimumCoolOffTime { get; init; } = TimeSpan.FromMinutes(5);
-
-    public TimeSpan MinimumHeatRunTime { get; init; } = TimeSpan.FromMinutes(5);
-    public TimeSpan MinimumHeatOffTime { get; init; } = TimeSpan.FromMinutes(2);
+    public TimeSpan MinimumRunTime { get; init; } = TimeSpan.FromMinutes(5);
+    public TimeSpan MinimumOffTime { get; init; } = TimeSpan.FromMinutes(5);
 
     public TimeSpan SensorTimeout { get; init; } = TimeSpan.FromMinutes(3);
 

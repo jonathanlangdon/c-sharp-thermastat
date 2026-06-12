@@ -4,6 +4,8 @@ public sealed record HvacSettings
 {
     public double TemperatureDifferentialF { get; init; } = 1.0;
 
+    public double AbsoluteHumidityCoolingThreshold { get; init; } = 9.0;
+
     public TimeSpan MinimumRunTime { get; init; } = TimeSpan.FromMinutes(5);
     public TimeSpan MinimumOffTime { get; init; } = TimeSpan.FromMinutes(5);
 

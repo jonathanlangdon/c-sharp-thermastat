@@ -6,15 +6,45 @@ namespace HvacController.Tests;
 public sealed class ThermostatEngineTests
 {
     [Fact]
-    public void CoolMode_WhenTemperatureIsAboveSetpoint_TurnsOnCoolingAndFan()
+    public void CoolMode_WhenAbsoluteHumidityIsBelowThreshold_DoesNotTurnOnCooling()
     {
         var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
-        var engine = new ThermostatEngine(new HvacSettings());
+        var engine = new ThermostatEngine(new HvacSettings
+        {
+            AbsoluteHumidityCoolingThreshold = 9.0,
+            IdleFanOn = false
+        });
 
         var input = new ThermostatInput
         {
-            CurrentTempF = 74,
-            CurrentHumidity = 48,
+            CurrentTempF = 68,
+            CurrentHumidity = 50,
+            SetpointF = 72,
+            Mode = HvacMode.Cool,
+            Now = now,
+            LastSensorUpdate = now
+        };
+
+        var (output, _) = engine.Evaluate(input, ThermostatRuntimeState.Empty);
+
+        Assert.False(output.Heat);
+        Assert.False(output.Cool);
+        Assert.False(output.Fan);
+    }
+
+    [Fact]
+    public void CoolMode_WhenAbsoluteHumidityIsAtOrAboveThreshold_TurnsOnCoolingAndFan()
+    {
+        var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
+        var engine = new ThermostatEngine(new HvacSettings
+        {
+            AbsoluteHumidityCoolingThreshold = 9.0
+        });
+
+        var input = new ThermostatInput
+        {
+            CurrentTempF = 72,
+            CurrentHumidity = 50,
             SetpointF = 72,
             Mode = HvacMode.Cool,
             Now = now,
@@ -155,7 +185,7 @@ public sealed class ThermostatEngineTests
         var input = new ThermostatInput
         {
             CurrentTempF = 72,
-            CurrentHumidity = 48,
+            CurrentHumidity = 40,
             SetpointF = 72,
             Mode = HvacMode.Cool,
             Now = now,

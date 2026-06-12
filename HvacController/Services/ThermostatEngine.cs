@@ -20,6 +20,11 @@ public sealed class ThermostatEngine
             return SafeOff(previousState, input.Now, "No temperature reading");
         }
 
+        if (input.CurrentHumidity is null)
+        {
+            return SafeOff(previousState, input.Now, "No humidity reading");
+        }
+
         if (input.LastSensorUpdate is null ||
             input.Now - input.LastSensorUpdate > _settings.SensorTimeout)
         {
@@ -27,12 +32,17 @@ public sealed class ThermostatEngine
         }
 
         var temp = input.CurrentTempF.Value;
+        var relativeHumidity = input.CurrentHumidity.Value;
+        var absoluteHumidity =
+            AbsoluteHumidityCalculator.CalculateGramsPerCubicMeterFromFahrenheit(
+                temp,
+                relativeHumidity);
 
         var heat = input.Mode == HvacMode.Heat
             && ShouldHeat(input, previousState, temp);
 
         var cool = input.Mode == HvacMode.Cool
-            && ShouldCool(input, previousState, temp);
+            && ShouldCool(input, previousState, absoluteHumidity);
 
         var fan = false;
 
@@ -64,7 +74,7 @@ public sealed class ThermostatEngine
             Heat = heat,
             Cool = cool,
             Fan = fan,
-            Reason = "Normal evaluation"
+            Reason = "Everything Normal"
         });
     }
 
@@ -98,7 +108,7 @@ public sealed class ThermostatEngine
     private bool ShouldCool(
         ThermostatInput input,
         ThermostatRuntimeState state,
-        double temp)
+        double absoluteHumidity)
     {
         if (state.WasCooling)
         {
@@ -111,7 +121,7 @@ public sealed class ThermostatEngine
                 return true;
             }
 
-            return temp > input.SetpointF;
+            return absoluteHumidity >= _settings.AbsoluteHumidityCoolingThreshold;
         }
 
         var minOffSatisfied =
@@ -119,7 +129,7 @@ public sealed class ThermostatEngine
             input.Now - state.LastCoolStopped >= _settings.MinimumOffTime;
 
         return minOffSatisfied &&
-               temp >= input.SetpointF + _settings.TemperatureDifferentialF;
+               absoluteHumidity >= _settings.AbsoluteHumidityCoolingThreshold;
     }
 
     private static (ThermostatOutput Output, ThermostatRuntimeState State) SafeOff(

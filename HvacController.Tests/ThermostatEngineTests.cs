@@ -350,12 +350,12 @@ public sealed class ThermostatEngineTests
     }
 
     [Fact]
-    public void HeatMode_UsesHeatSetPointFromSettings()
+    public void HeatMode_UsesDayHeatSetPointFromSettings()
     {
         var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
         var engine = new ThermostatEngine(new HvacSettings
         {
-            HeatSetPoint = 70.0
+            DayHeatSetPoint = 70.0
         });
 
         var input = new ThermostatInput
@@ -373,4 +373,85 @@ public sealed class ThermostatEngineTests
         Assert.False(output.Cool);
         Assert.False(output.Fan);
     }
+
+    [Fact]
+    public void HeatMode_AtNight_Uses65DegreeHeatSetPoint()
+    {
+        var now = DateTimeOffset.Parse("2026-06-12T23:00:00Z");
+        var engine = new ThermostatEngine(new HvacSettings
+        {
+            DayHeatSetPoint = 70.0,
+            NightHeatSetPoint = 65.0
+        });
+
+        var input = new ThermostatInput
+        {
+            CurrentTempF = 64,
+            CurrentHumidity = 40,
+            Mode = HvacMode.Heat,
+            Now = now,
+            LastSensorUpdate = now
+        };
+
+        var (output, _) = engine.Evaluate(input, ThermostatRuntimeState.Empty);
+
+        Assert.True(output.Heat);
+        Assert.False(output.Cool);
+        Assert.False(output.Fan);
+    }
+
+    [Fact]
+    public void HeatMode_AtNight_DoesNotHeatUntilBelow65DegreeSetPointMinusDifferential()
+    {
+        var now = DateTimeOffset.Parse("2026-06-12T23:00:00Z");
+        var engine = new ThermostatEngine(new HvacSettings
+        {
+            DayHeatSetPoint = 70.0,
+            NightHeatSetPoint = 65.0,
+            TemperatureDifferentialF = 1.0,
+            IdleFanOn = false
+        });
+
+        var input = new ThermostatInput
+        {
+            CurrentTempF = 64.5,
+            CurrentHumidity = 40,
+            Mode = HvacMode.Heat,
+            Now = now,
+            LastSensorUpdate = now
+        };
+
+        var (output, _) = engine.Evaluate(input, ThermostatRuntimeState.Empty);
+
+        Assert.False(output.Heat);
+        Assert.False(output.Cool);
+        Assert.False(output.Fan);
+    }
+
+    [Fact]
+    public void HeatMode_DuringDay_Uses70DegreeHeatSetPoint()
+    {
+        var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
+        var engine = new ThermostatEngine(new HvacSettings
+        {
+            DayHeatSetPoint = 70.0,
+            NightHeatSetPoint = 65.0
+        });
+
+        var input = new ThermostatInput
+        {
+            CurrentTempF = 68,
+            CurrentHumidity = 40,
+            Mode = HvacMode.Heat,
+            Now = now,
+            LastSensorUpdate = now
+        };
+
+        var (output, _) = engine.Evaluate(input, ThermostatRuntimeState.Empty);
+
+        Assert.True(output.Heat);
+        Assert.False(output.Cool);
+        Assert.False(output.Fan);
+    }
+
 }

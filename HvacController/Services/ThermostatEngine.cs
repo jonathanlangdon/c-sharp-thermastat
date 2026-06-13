@@ -78,6 +78,24 @@ public sealed class ThermostatEngine
         });
     }
 
+    private double GetHeatSetPoint(DateTimeOffset now)
+    {
+        var currentTime = TimeOnly.FromDateTime(now.LocalDateTime);
+
+        if (_settings.NightHeatStart > _settings.NightHeatEnd)
+        {
+            return currentTime >= _settings.NightHeatStart ||
+                currentTime < _settings.NightHeatEnd
+                ? _settings.NightHeatSetPoint
+                : _settings.DayHeatSetPoint;
+        }
+
+        return currentTime >= _settings.NightHeatStart &&
+            currentTime < _settings.NightHeatEnd
+            ? _settings.NightHeatSetPoint
+            : _settings.DayHeatSetPoint;
+    }
+
     private bool ShouldHeat(
         ThermostatInput input,
         ThermostatRuntimeState state,
@@ -94,7 +112,7 @@ public sealed class ThermostatEngine
                 return true;
             }
 
-            return temp < _settings.HeatSetPoint;
+            return temp < GetHeatSetPoint(input.Now);
         }
 
         var minOffSatisfied =
@@ -102,7 +120,7 @@ public sealed class ThermostatEngine
             input.Now - state.LastHeatStopped >= _settings.MinimumOffTime;
 
         return minOffSatisfied &&
-               temp <= _settings.HeatSetPoint - _settings.TemperatureDifferentialF;
+               temp <= GetHeatSetPoint(input.Now) - _settings.TemperatureDifferentialF;
     }
 
     private bool ShouldCool(

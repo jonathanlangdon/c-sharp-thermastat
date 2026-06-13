@@ -94,7 +94,7 @@ public sealed class ThermostatEngine
                 return true;
             }
 
-            return temp < input.SetpointF;
+            return temp < _settings.HeatSetPoint;
         }
 
         var minOffSatisfied =
@@ -102,7 +102,7 @@ public sealed class ThermostatEngine
             input.Now - state.LastHeatStopped >= _settings.MinimumOffTime;
 
         return minOffSatisfied &&
-               temp <= input.SetpointF - _settings.TemperatureDifferentialF;
+               temp <= _settings.HeatSetPoint - _settings.TemperatureDifferentialF;
     }
 
     private bool ShouldCool(

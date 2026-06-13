@@ -11,8 +11,8 @@ public sealed class ThermostatEngineTests
         var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
         var engine = new ThermostatEngine(new HvacSettings
         {
-            AbsoluteHumidityCoolingOnThreshold = 9.2,
-            AbsoluteHumidityCoolingOffThreshold = 8.8,
+            AbsoluteHumidityCoolingOnThreshold = 9.5,
+            AbsoluteHumidityCoolingOffThreshold = 9.0,
             IdleFanOn = false
         });
 
@@ -20,7 +20,6 @@ public sealed class ThermostatEngineTests
         {
             CurrentTempF = 68,
             CurrentHumidity = 50,
-            SetpointF = 72,
             Mode = HvacMode.Cool,
             Now = now,
             LastSensorUpdate = now
@@ -39,15 +38,14 @@ public sealed class ThermostatEngineTests
         var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
         var engine = new ThermostatEngine(new HvacSettings
         {
-            AbsoluteHumidityCoolingOnThreshold = 9.2,
-            AbsoluteHumidityCoolingOffThreshold = 8.8
+            AbsoluteHumidityCoolingOnThreshold = 9.5,
+            AbsoluteHumidityCoolingOffThreshold = 9.0
         });
 
         var input = new ThermostatInput
         {
             CurrentTempF = 72,
             CurrentHumidity = 50,
-            SetpointF = 72,
             Mode = HvacMode.Cool,
             Now = now,
             LastSensorUpdate = now
@@ -66,8 +64,8 @@ public sealed class ThermostatEngineTests
         var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
         var engine = new ThermostatEngine(new HvacSettings
         {
-            AbsoluteHumidityCoolingOnThreshold = 9.2,
-            AbsoluteHumidityCoolingOffThreshold = 8.8,
+            AbsoluteHumidityCoolingOnThreshold = 9.5,
+            AbsoluteHumidityCoolingOffThreshold = 9.0,
             MinimumRunTime = TimeSpan.FromMinutes(5)
         });
 
@@ -81,7 +79,6 @@ public sealed class ThermostatEngineTests
         {
             CurrentTempF = 72,
             CurrentHumidity = 46,
-            SetpointF = 72,
             Mode = HvacMode.Cool,
             Now = now,
             LastSensorUpdate = now
@@ -100,8 +97,8 @@ public sealed class ThermostatEngineTests
         var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
         var engine = new ThermostatEngine(new HvacSettings
         {
-            AbsoluteHumidityCoolingOnThreshold = 9.2,
-            AbsoluteHumidityCoolingOffThreshold = 8.8,
+            AbsoluteHumidityCoolingOnThreshold = 9.5,
+            AbsoluteHumidityCoolingOffThreshold = 9.0,
             MinimumRunTime = TimeSpan.FromMinutes(5),
             IdleFanOn = false
         });
@@ -116,7 +113,6 @@ public sealed class ThermostatEngineTests
         {
             CurrentTempF = 72,
             CurrentHumidity = 44,
-            SetpointF = 72,
             Mode = HvacMode.Cool,
             Now = now,
             LastSensorUpdate = now
@@ -139,7 +135,6 @@ public sealed class ThermostatEngineTests
         {
             CurrentTempF = 68,
             CurrentHumidity = 48,
-            SetpointF = 70,
             Mode = HvacMode.Heat,
             Now = now,
             LastSensorUpdate = now
@@ -165,7 +160,6 @@ public sealed class ThermostatEngineTests
         {
             CurrentTempF = 80,
             CurrentHumidity = 48,
-            SetpointF = 72,
             Mode = HvacMode.Cool,
             Now = now,
             LastSensorUpdate = now.AddMinutes(-4)
@@ -199,7 +193,6 @@ public sealed class ThermostatEngineTests
         {
             CurrentTempF = 80,
             CurrentHumidity = 48,
-            SetpointF = 72,
             Mode = HvacMode.Cool,
             Now = now,
             LastSensorUpdate = now
@@ -231,7 +224,6 @@ public sealed class ThermostatEngineTests
         {
             CurrentTempF = 71,
             CurrentHumidity = 48,
-            SetpointF = 72,
             Mode = HvacMode.Cool,
             Now = now,
             LastSensorUpdate = now
@@ -257,7 +249,6 @@ public sealed class ThermostatEngineTests
         {
             CurrentTempF = 72,
             CurrentHumidity = 40,
-            SetpointF = 72,
             Mode = HvacMode.Cool,
             Now = now,
             LastSensorUpdate = now
@@ -283,7 +274,6 @@ public sealed class ThermostatEngineTests
         {
             CurrentTempF = 70,
             CurrentHumidity = 48,
-            SetpointF = 70,
             Mode = HvacMode.Heat,
             Now = now,
             LastSensorUpdate = now
@@ -315,7 +305,6 @@ public sealed class ThermostatEngineTests
         {
             CurrentTempF = 71,
             CurrentHumidity = 48,
-            SetpointF = 70,
             Mode = HvacMode.Heat,
             Now = now,
             LastSensorUpdate = now
@@ -348,7 +337,6 @@ public sealed class ThermostatEngineTests
         {
             CurrentTempF = 60,
             CurrentHumidity = 48,
-            SetpointF = 70,
             Mode = HvacMode.Heat,
             Now = now,
             LastSensorUpdate = now
@@ -357,6 +345,31 @@ public sealed class ThermostatEngineTests
         var (output, _) = engine.Evaluate(input, previousState);
 
         Assert.False(output.Heat);
+        Assert.False(output.Cool);
+        Assert.False(output.Fan);
+    }
+
+    [Fact]
+    public void HeatMode_UsesHeatSetPointFromSettings()
+    {
+        var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
+        var engine = new ThermostatEngine(new HvacSettings
+        {
+            HeatSetPoint = 70.0
+        });
+
+        var input = new ThermostatInput
+        {
+            CurrentTempF = 68,
+            CurrentHumidity = 40,
+            Mode = HvacMode.Heat,
+            Now = now,
+            LastSensorUpdate = now
+        };
+
+        var (output, _) = engine.Evaluate(input, ThermostatRuntimeState.Empty);
+
+        Assert.True(output.Heat);
         Assert.False(output.Cool);
         Assert.False(output.Fan);
     }

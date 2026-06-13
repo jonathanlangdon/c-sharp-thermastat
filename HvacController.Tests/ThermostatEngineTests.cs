@@ -12,8 +12,7 @@ public sealed class ThermostatEngineTests
         var engine = new ThermostatEngine(new HvacSettings
         {
             AbsoluteHumidityCoolingOnThreshold = 9.5,
-            AbsoluteHumidityCoolingOffThreshold = 9.0,
-            IdleFanOn = false
+            AbsoluteHumidityCoolingOffThreshold = 9.0
         });
 
         var input = new ThermostatInput
@@ -99,8 +98,7 @@ public sealed class ThermostatEngineTests
         {
             AbsoluteHumidityCoolingOnThreshold = 9.5,
             AbsoluteHumidityCoolingOffThreshold = 9.0,
-            MinimumRunTime = TimeSpan.FromMinutes(5),
-            IdleFanOn = false
+            MinimumRunTime = TimeSpan.FromMinutes(5)
         });
 
         var previousState = ThermostatRuntimeState.Empty with
@@ -180,8 +178,7 @@ public sealed class ThermostatEngineTests
         var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
         var engine = new ThermostatEngine(new HvacSettings
         {
-            MinimumOffTime = TimeSpan.FromMinutes(5),
-            IdleFanOn = false
+            MinimumOffTime = TimeSpan.FromMinutes(5)
         });
 
         var previousState = ThermostatRuntimeState.Empty with
@@ -241,10 +238,7 @@ public sealed class ThermostatEngineTests
     public void Idle_WhenCoolModeAndNoCoolingNeeded_TurnsFanOn()
     {
         var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
-        var engine = new ThermostatEngine(new HvacSettings
-        {
-            IdleFanOn = true
-        });
+        var engine = new ThermostatEngine(new HvacSettings {});
 
         var input = new ThermostatInput
         {
@@ -266,10 +260,7 @@ public sealed class ThermostatEngineTests
     public void Idle_WhenHeatModeAndNoHeatingNeeded_TurnsFanOn()
     {
         var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
-        var engine = new ThermostatEngine(new HvacSettings
-        {
-            IdleFanOn = true
-        });
+        var engine = new ThermostatEngine(new HvacSettings {});
 
         var input = new ThermostatInput
         {
@@ -324,8 +315,7 @@ public sealed class ThermostatEngineTests
         var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
         var engine = new ThermostatEngine(new HvacSettings
         {
-            MinimumOffTime = TimeSpan.FromMinutes(5),
-            IdleFanOn = false
+            MinimumOffTime = TimeSpan.FromMinutes(5)
         });
 
         var previousState = ThermostatRuntimeState.Empty with
@@ -410,8 +400,7 @@ public sealed class ThermostatEngineTests
         {
             DayHeatSetPoint = 70.0,
             NightHeatSetPoint = 65.0,
-            TemperatureDifferentialF = 1.0,
-            IdleFanOn = false
+            TemperatureDifferentialF = 1.0
         });
 
         var input = new ThermostatInput
@@ -493,8 +482,7 @@ public sealed class ThermostatEngineTests
         {
             DayHeatSetPoint = 70.0,
             NightHeatSetPoint = 65.0,
-            MotionSetPointHoldTime = TimeSpan.FromHours(2),
-            IdleFanOn = true
+            MotionSetPointHoldTime = TimeSpan.FromHours(2)
         });
 
         var input = new ThermostatInput

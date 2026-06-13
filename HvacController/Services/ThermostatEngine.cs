@@ -8,6 +8,8 @@ public sealed class ThermostatEngine
 
     public ThermostatEngine(HvacSettings settings)
     {
+        settings.ValidateFixedSettings();
+
         _settings = settings;
     }
 
@@ -15,12 +17,12 @@ public sealed class ThermostatEngine
         ThermostatInput input,
         ThermostatRuntimeState previousState)
     {
-        if (input.CurrentTempF is null)
+        if (input.CurrentTempFahrUp is null)
         {
             return SafeOff(previousState, input.Now, "No temperature reading");
         }
 
-        if (input.CurrentHumidity is null)
+        if (input.ControlAbsoluteHumidity is null)
         {
             return SafeOff(previousState, input.Now, "No humidity reading");
         }
@@ -31,8 +33,8 @@ public sealed class ThermostatEngine
             return SafeOff(previousState, input.Now, "Sensor timeout");
         }
 
-        var temp = input.CurrentTempF.Value;
-        var absoluteHumidity = input.CurrentHumidity.Value;
+        var temp = input.CurrentTempFahrUp.Value;
+        var absoluteHumidity = input.ControlAbsoluteHumidity.Value;
 
         var heat = input.Mode == HvacMode.Heat
             && ShouldHeat(input, previousState, temp);

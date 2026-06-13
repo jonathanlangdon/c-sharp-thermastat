@@ -7,8 +7,6 @@ public sealed record ThermostatInput
     public double? CurrentTempFahrUp { get; init; }
     public double? CurrentTempFahrDown { get; init; }
 
-    public double? CurrentTempF => CurrentTempFahrUp;
-
     public double? HumidityUpstairs { get; init; }
     public double? HumidityDownstairs { get; init; }
 
@@ -26,7 +24,7 @@ public sealed record ThermostatInput
                 CurrentTempFahrDown.Value,
                 HumidityDownstairs.Value);
 
-    public double? CurrentHumidity
+    public double? ControlAbsoluteHumidity
     {
         get
         {

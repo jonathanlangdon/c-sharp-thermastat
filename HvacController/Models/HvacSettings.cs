@@ -20,7 +20,33 @@ public sealed record HvacSettings
 
     public TimeSpan MotionSetPointHoldTime { get; init; } = TimeSpan.FromHours(2);
 
-    public bool FanOnWithCooling { get; init; } = true;
-    public bool FanOnWithHeat { get; init; } = false;
-    public bool IdleFanOn { get; init; } = true;
+    public void ValidateFixedSettings()
+    {
+        if (MinimumRunTime <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(MinimumRunTime),
+                "Minimum run time must be greater than zero.");
+        }
+
+        if (MinimumOffTime <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(MinimumOffTime),
+                "Minimum off time must be greater than zero.");
+        }
+
+        if (SensorTimeout <= TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(SensorTimeout),
+                "Sensor timeout must be greater than zero.");
+        }
+    }
+
+    public bool HasValidCoolingThresholds()
+    {
+        return AbsoluteHumidityCoolingOnThreshold >
+               AbsoluteHumidityCoolingOffThreshold;
+    }
 }

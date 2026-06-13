@@ -636,4 +636,62 @@ public sealed class ThermostatEngineTests
         Assert.True(output.Fan);
     }
 
+    [Fact]
+    public void CoolMode_WhenInsideHumidityIsHighButOutsideAbsoluteHumidityIsBelowLockout_DoesNotTurnOnCooling()
+    {
+        var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
+        var engine = new ThermostatEngine(new HvacSettings
+        {
+            AbsoluteHumidityCoolingOnThreshold = 9.5,
+            AbsoluteHumidityCoolingOffThreshold = 9.0,
+            OutdoorCoolingLockoutAbsoluteHumidityThreshold = 9.0
+        });
+
+        var input = new ThermostatInput
+        {
+            CurrentTempFahrUp = 72,
+            HumidityUpstairs = 50, // inside AH about 9.83
+            OutsideAbsoluteHumidity = 8.9,
+            Mode = HvacMode.Cool,
+            Now = now,
+            LastSensorUpdate = now,
+            LastMotionDetected = now
+        };
+
+        var (output, _) = engine.Evaluate(input, ThermostatRuntimeState.Empty);
+
+        Assert.False(output.Heat);
+        Assert.False(output.Cool);
+        Assert.True(output.Fan);
+    }
+
+    [Fact]
+    public void CoolMode_WhenInsideHumidityIsHighAndOutsideAbsoluteHumidityIsAtLockoutThreshold_TurnsOnCooling()
+    {
+        var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
+        var engine = new ThermostatEngine(new HvacSettings
+        {
+            AbsoluteHumidityCoolingOnThreshold = 9.5,
+            AbsoluteHumidityCoolingOffThreshold = 9.0,
+            OutdoorCoolingLockoutAbsoluteHumidityThreshold = 9.0
+        });
+
+        var input = new ThermostatInput
+        {
+            CurrentTempFahrUp = 72,
+            HumidityUpstairs = 50, // inside AH about 9.83
+            OutsideAbsoluteHumidity = 9.0,
+            Mode = HvacMode.Cool,
+            Now = now,
+            LastSensorUpdate = now,
+            LastMotionDetected = now
+        };
+
+        var (output, _) = engine.Evaluate(input, ThermostatRuntimeState.Empty);
+
+        Assert.False(output.Heat);
+        Assert.True(output.Cool);
+        Assert.True(output.Fan);
+    }
+
 }

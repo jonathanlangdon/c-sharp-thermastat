@@ -10,6 +10,8 @@ public sealed record ThermostatInput
     public double? HumidityUpstairs { get; init; }
     public double? HumidityDownstairs { get; init; }
 
+    public double? OutsideAbsoluteHumidity { get; init; }
+
     public double? AbsoluteHumidityUpstairs =>
         CurrentTempFahrUp is null || HumidityUpstairs is null
             ? null

@@ -40,6 +40,7 @@ public sealed class ThermostatEngine
             && ShouldHeat(input, previousState, temp);
 
         var cool = input.Mode == HvacMode.Cool
+            && OutsideHumidityAllowsCooling(input)
             && ShouldCool(input, previousState, absoluteHumidity);
 
         var fan = true;
@@ -110,6 +111,13 @@ public sealed class ThermostatEngine
 
         return minOffSatisfied &&
                temp <= GetHeatSetPoint(input) - _settings.TemperatureDifferentialF;
+    }
+
+    private bool OutsideHumidityAllowsCooling(ThermostatInput input)
+    {
+        return input.OutsideAbsoluteHumidity is null ||
+            input.OutsideAbsoluteHumidity >=
+            _settings.OutdoorCoolingLockoutAbsoluteHumidityThreshold;
     }
 
     private bool ShouldCool(

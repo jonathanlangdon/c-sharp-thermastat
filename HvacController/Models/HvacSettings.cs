@@ -20,7 +20,7 @@ public sealed record HvacSettings
 
     public TimeSpan SensorTimeout { get; init; } = TimeSpan.FromMinutes(3);
 
-    public TimeSpan MotionSetPointHoldTime { get; init; } = TimeSpan.FromHours(2);
+    public TimeSpan MotionSetPointHoldTime { get; init; } = TimeSpan.FromHours(1);
 
     public void ValidateFixedSettings()
     {

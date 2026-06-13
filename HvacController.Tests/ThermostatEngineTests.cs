@@ -29,7 +29,7 @@ public sealed class ThermostatEngineTests
 
         Assert.False(output.Heat);
         Assert.False(output.Cool);
-        Assert.False(output.Fan);
+        Assert.True(output.Fan);
     }
 
     [Fact]
@@ -122,7 +122,7 @@ public sealed class ThermostatEngineTests
 
         Assert.False(output.Heat);
         Assert.False(output.Cool);
-        Assert.False(output.Fan);
+        Assert.True(output.Fan);
     }
 
     [Fact]
@@ -135,6 +135,7 @@ public sealed class ThermostatEngineTests
         {
             CurrentTempF = 68,
             CurrentHumidity = 48,
+            LastMotionDetected = now.AddMinutes(-30),
             Mode = HvacMode.Heat,
             Now = now,
             LastSensorUpdate = now
@@ -144,7 +145,7 @@ public sealed class ThermostatEngineTests
 
         Assert.True(output.Heat);
         Assert.False(output.Cool);
-        Assert.False(output.Fan);
+        Assert.True(output.Fan);
     }
 
     [Fact]
@@ -202,7 +203,7 @@ public sealed class ThermostatEngineTests
 
         Assert.False(output.Cool);
         Assert.False(output.Heat);
-        Assert.False(output.Fan);
+        Assert.True(output.Fan);
     }
 
     [Fact]
@@ -314,7 +315,7 @@ public sealed class ThermostatEngineTests
 
         Assert.True(output.Heat);
         Assert.False(output.Cool);
-        Assert.False(output.Fan);
+        Assert.True(output.Fan);
     }
 
     [Fact]
@@ -346,7 +347,7 @@ public sealed class ThermostatEngineTests
 
         Assert.False(output.Heat);
         Assert.False(output.Cool);
-        Assert.False(output.Fan);
+        Assert.True(output.Fan);
     }
 
     [Fact]
@@ -362,6 +363,7 @@ public sealed class ThermostatEngineTests
         {
             CurrentTempF = 68,
             CurrentHumidity = 40,
+            LastMotionDetected = now.AddMinutes(-30),
             Mode = HvacMode.Heat,
             Now = now,
             LastSensorUpdate = now
@@ -371,7 +373,7 @@ public sealed class ThermostatEngineTests
 
         Assert.True(output.Heat);
         Assert.False(output.Cool);
-        Assert.False(output.Fan);
+        Assert.True(output.Fan);
     }
 
     [Fact]
@@ -397,7 +399,7 @@ public sealed class ThermostatEngineTests
 
         Assert.True(output.Heat);
         Assert.False(output.Cool);
-        Assert.False(output.Fan);
+        Assert.True(output.Fan);
     }
 
     [Fact]
@@ -425,7 +427,7 @@ public sealed class ThermostatEngineTests
 
         Assert.False(output.Heat);
         Assert.False(output.Cool);
-        Assert.False(output.Fan);
+        Assert.True(output.Fan);
     }
 
     [Fact]
@@ -442,6 +444,7 @@ public sealed class ThermostatEngineTests
         {
             CurrentTempF = 68,
             CurrentHumidity = 40,
+            LastMotionDetected = now.AddMinutes(-30),
             Mode = HvacMode.Heat,
             Now = now,
             LastSensorUpdate = now
@@ -451,7 +454,111 @@ public sealed class ThermostatEngineTests
 
         Assert.True(output.Heat);
         Assert.False(output.Cool);
+        Assert.True(output.Fan);
+    }
+
+    [Fact]
+    public void HeatMode_DuringDayWithRecentMotion_UsesDayHeatSetPoint()
+    {
+        var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
+        var engine = new ThermostatEngine(new HvacSettings
+        {
+            DayHeatSetPoint = 70.0,
+            NightHeatSetPoint = 65.0,
+            MotionSetPointHoldTime = TimeSpan.FromHours(2)
+        });
+
+        var input = new ThermostatInput
+        {
+            CurrentTempF = 68,
+            CurrentHumidity = 40,
+            Mode = HvacMode.Heat,
+            Now = now,
+            LastSensorUpdate = now,
+            LastMotionDetected = now.AddHours(-1)
+        };
+
+        var (output, _) = engine.Evaluate(input, ThermostatRuntimeState.Empty);
+
+        Assert.True(output.Heat);
+        Assert.False(output.Cool);
+        Assert.True(output.Fan);
+    }
+
+    [Fact]
+    public void HeatMode_DuringDayWithoutRecentMotion_UsesNightHeatSetPoint()
+    {
+        var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
+        var engine = new ThermostatEngine(new HvacSettings
+        {
+            DayHeatSetPoint = 70.0,
+            NightHeatSetPoint = 65.0,
+            MotionSetPointHoldTime = TimeSpan.FromHours(2),
+            IdleFanOn = true
+        });
+
+        var input = new ThermostatInput
+        {
+            CurrentTempF = 68,
+            CurrentHumidity = 40,
+            Mode = HvacMode.Heat,
+            Now = now,
+            LastSensorUpdate = now,
+            LastMotionDetected = now.AddHours(-3)
+        };
+
+        var (output, _) = engine.Evaluate(input, ThermostatRuntimeState.Empty);
+
+        Assert.False(output.Heat);
+        Assert.False(output.Cool);
+        Assert.True(output.Fan);
+    }
+    [Fact]
+    public void NoTemperatureReading_TurnsEverythingOff()
+    {
+        var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
+        var engine = new ThermostatEngine(new HvacSettings());
+
+        var input = new ThermostatInput
+        {
+            CurrentTempF = null,
+            CurrentHumidity = 40,
+            Mode = HvacMode.Heat,
+            Now = now,
+            LastSensorUpdate = now,
+            LastMotionDetected = now
+        };
+
+        var (output, _) = engine.Evaluate(input, ThermostatRuntimeState.Empty);
+
+        Assert.False(output.Heat);
+        Assert.False(output.Cool);
         Assert.False(output.Fan);
+        Assert.Equal("No temperature reading", output.Reason);
+    }
+
+    [Fact]
+    public void NoHumidityReading_TurnsEverythingOff()
+    {
+        var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
+        var engine = new ThermostatEngine(new HvacSettings());
+
+        var input = new ThermostatInput
+        {
+            CurrentTempF = 70,
+            CurrentHumidity = null,
+            Mode = HvacMode.Heat,
+            Now = now,
+            LastSensorUpdate = now,
+            LastMotionDetected = now
+        };
+
+        var (output, _) = engine.Evaluate(input, ThermostatRuntimeState.Empty);
+
+        Assert.False(output.Heat);
+        Assert.False(output.Cool);
+        Assert.False(output.Fan);
+        Assert.Equal("No humidity reading", output.Reason);
     }
 
 }

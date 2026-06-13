@@ -44,7 +44,7 @@ public sealed class ThermostatEngine
         var cool = input.Mode == HvacMode.Cool
             && ShouldCool(input, previousState, absoluteHumidity);
 
-        var fan = false;
+        var fan = true;
 
         // Hard safety rule.
         if (heat && cool)
@@ -52,21 +52,6 @@ public sealed class ThermostatEngine
             heat = false;
             cool = false;
             fan = false;
-        }
-
-        if (cool && _settings.FanOnWithCooling)
-        {
-            fan = true;
-        }
-
-        if (heat && _settings.FanOnWithHeat)
-        {
-            fan = true;
-        }
-
-        if (!heat && !cool && _settings.IdleFanOn)
-        {
-            fan = true;
         }
 
         return Transition(previousState, input.Now, new ThermostatOutput
@@ -78,22 +63,28 @@ public sealed class ThermostatEngine
         });
     }
 
-    private double GetHeatSetPoint(DateTimeOffset now)
+    private double GetHeatSetPoint(ThermostatInput input)
     {
-        var currentTime = TimeOnly.FromDateTime(now.LocalDateTime);
+        var currentTime = TimeOnly.FromDateTime(input.Now.LocalDateTime);
 
-        if (_settings.NightHeatStart > _settings.NightHeatEnd)
+        var isNightTime = _settings.NightHeatStart > _settings.NightHeatEnd
+            ? currentTime >= _settings.NightHeatStart ||
+            currentTime < _settings.NightHeatEnd
+            : currentTime >= _settings.NightHeatStart &&
+            currentTime < _settings.NightHeatEnd;
+
+        if (isNightTime)
         {
-            return currentTime >= _settings.NightHeatStart ||
-                currentTime < _settings.NightHeatEnd
-                ? _settings.NightHeatSetPoint
-                : _settings.DayHeatSetPoint;
+            return _settings.NightHeatSetPoint;
         }
 
-        return currentTime >= _settings.NightHeatStart &&
-            currentTime < _settings.NightHeatEnd
-            ? _settings.NightHeatSetPoint
-            : _settings.DayHeatSetPoint;
+        var hasRecentMotion =
+            input.LastMotionDetected is not null &&
+            input.Now - input.LastMotionDetected <= _settings.MotionSetPointHoldTime;
+
+        return hasRecentMotion
+            ? _settings.DayHeatSetPoint
+            : _settings.NightHeatSetPoint;
     }
 
     private bool ShouldHeat(
@@ -112,7 +103,7 @@ public sealed class ThermostatEngine
                 return true;
             }
 
-            return temp < GetHeatSetPoint(input.Now);
+            return temp < GetHeatSetPoint(input);
         }
 
         var minOffSatisfied =
@@ -120,7 +111,7 @@ public sealed class ThermostatEngine
             input.Now - state.LastHeatStopped >= _settings.MinimumOffTime;
 
         return minOffSatisfied &&
-               temp <= GetHeatSetPoint(input.Now) - _settings.TemperatureDifferentialF;
+               temp <= GetHeatSetPoint(input) - _settings.TemperatureDifferentialF;
     }
 
     private bool ShouldCool(

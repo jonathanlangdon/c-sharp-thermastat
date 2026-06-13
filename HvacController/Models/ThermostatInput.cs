@@ -9,4 +9,5 @@ public sealed record ThermostatInput
 
     public DateTimeOffset Now { get; init; }
     public DateTimeOffset? LastSensorUpdate { get; init; }
+    public DateTimeOffset? LastMotionDetected { get; init; }
 }

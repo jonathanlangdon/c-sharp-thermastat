@@ -17,6 +17,8 @@ public sealed record HvacSettings
     public TimeSpan MinimumOffTime { get; init; } = TimeSpan.FromMinutes(5);
 
     public TimeSpan SensorTimeout { get; init; } = TimeSpan.FromMinutes(3);
+    
+    public TimeSpan MotionSetPointHoldTime { get; init; } = TimeSpan.FromHours(2);
 
     public bool FanOnWithCooling { get; init; } = true;
     public bool FanOnWithHeat { get; init; } = false;

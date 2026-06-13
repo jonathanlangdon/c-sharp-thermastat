@@ -2,9 +2,9 @@ namespace HvacController.Models;
 
 public sealed record HvacSettings
 {
-    public double TemperatureDifferentialF { get; init; } = 1.0;
+    public double TemperatureDifferentialF { get; init; } = 0.6;
 
-    public double DayHeatSetPoint { get; init; } = 70.0;
+    public double DayHeatSetPoint { get; init; } = 70.6;
     public double NightHeatSetPoint { get; init; } = 65.0;
 
     public TimeOnly NightHeatStart { get; init; } = new(19, 0);
@@ -17,7 +17,7 @@ public sealed record HvacSettings
     public TimeSpan MinimumOffTime { get; init; } = TimeSpan.FromMinutes(5);
 
     public TimeSpan SensorTimeout { get; init; } = TimeSpan.FromMinutes(3);
-    
+
     public TimeSpan MotionSetPointHoldTime { get; init; } = TimeSpan.FromHours(2);
 
     public bool FanOnWithCooling { get; init; } = true;

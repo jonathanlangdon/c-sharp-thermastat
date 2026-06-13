@@ -32,11 +32,7 @@ public sealed class ThermostatEngine
         }
 
         var temp = input.CurrentTempF.Value;
-        var relativeHumidity = input.CurrentHumidity.Value;
-        var absoluteHumidity =
-            AbsoluteHumidityCalculator.CalculateGramsPerCubicMeterFromFahrenheit(
-                temp,
-                relativeHumidity);
+        var absoluteHumidity = input.CurrentHumidity.Value;
 
         var heat = input.Mode == HvacMode.Heat
             && ShouldHeat(input, previousState, temp);

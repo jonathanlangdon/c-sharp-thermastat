@@ -18,8 +18,8 @@ public sealed class ThermostatEngineTests
 
         var input = new ThermostatInput
         {
-            CurrentTempF = 68,
-            CurrentHumidity = 50,
+            CurrentTempFahrUp = 68,
+            HumidityUpstairs = 50,
             Mode = HvacMode.Cool,
             Now = now,
             LastSensorUpdate = now
@@ -44,8 +44,8 @@ public sealed class ThermostatEngineTests
 
         var input = new ThermostatInput
         {
-            CurrentTempF = 72,
-            CurrentHumidity = 50,
+            CurrentTempFahrUp = 72,
+            HumidityUpstairs = 50,
             Mode = HvacMode.Cool,
             Now = now,
             LastSensorUpdate = now
@@ -77,8 +77,8 @@ public sealed class ThermostatEngineTests
 
         var input = new ThermostatInput
         {
-            CurrentTempF = 72,
-            CurrentHumidity = 46,
+            CurrentTempFahrUp = 72,
+            HumidityUpstairs = 46,
             Mode = HvacMode.Cool,
             Now = now,
             LastSensorUpdate = now
@@ -111,8 +111,8 @@ public sealed class ThermostatEngineTests
 
         var input = new ThermostatInput
         {
-            CurrentTempF = 72,
-            CurrentHumidity = 44,
+            CurrentTempFahrUp = 72,
+            HumidityUpstairs = 44,
             Mode = HvacMode.Cool,
             Now = now,
             LastSensorUpdate = now
@@ -133,8 +133,8 @@ public sealed class ThermostatEngineTests
 
         var input = new ThermostatInput
         {
-            CurrentTempF = 68,
-            CurrentHumidity = 48,
+            CurrentTempFahrUp = 68,
+            HumidityUpstairs = 48,
             LastMotionDetected = now.AddMinutes(-30),
             Mode = HvacMode.Heat,
             Now = now,
@@ -159,8 +159,8 @@ public sealed class ThermostatEngineTests
 
         var input = new ThermostatInput
         {
-            CurrentTempF = 80,
-            CurrentHumidity = 48,
+            CurrentTempFahrUp = 80,
+            HumidityUpstairs = 48,
             Mode = HvacMode.Cool,
             Now = now,
             LastSensorUpdate = now.AddMinutes(-4)
@@ -192,8 +192,8 @@ public sealed class ThermostatEngineTests
 
         var input = new ThermostatInput
         {
-            CurrentTempF = 80,
-            CurrentHumidity = 48,
+            CurrentTempFahrUp = 80,
+            HumidityUpstairs = 48,
             Mode = HvacMode.Cool,
             Now = now,
             LastSensorUpdate = now
@@ -223,8 +223,8 @@ public sealed class ThermostatEngineTests
 
         var input = new ThermostatInput
         {
-            CurrentTempF = 71,
-            CurrentHumidity = 48,
+            CurrentTempFahrUp = 71,
+            HumidityUpstairs = 48,
             Mode = HvacMode.Cool,
             Now = now,
             LastSensorUpdate = now
@@ -248,8 +248,8 @@ public sealed class ThermostatEngineTests
 
         var input = new ThermostatInput
         {
-            CurrentTempF = 72,
-            CurrentHumidity = 40,
+            CurrentTempFahrUp = 72,
+            HumidityUpstairs = 40,
             Mode = HvacMode.Cool,
             Now = now,
             LastSensorUpdate = now
@@ -273,8 +273,8 @@ public sealed class ThermostatEngineTests
 
         var input = new ThermostatInput
         {
-            CurrentTempF = 70,
-            CurrentHumidity = 48,
+            CurrentTempFahrUp = 70,
+            HumidityUpstairs = 48,
             Mode = HvacMode.Heat,
             Now = now,
             LastSensorUpdate = now
@@ -304,8 +304,8 @@ public sealed class ThermostatEngineTests
 
         var input = new ThermostatInput
         {
-            CurrentTempF = 71,
-            CurrentHumidity = 48,
+            CurrentTempFahrUp = 71,
+            HumidityUpstairs = 48,
             Mode = HvacMode.Heat,
             Now = now,
             LastSensorUpdate = now
@@ -336,8 +336,8 @@ public sealed class ThermostatEngineTests
 
         var input = new ThermostatInput
         {
-            CurrentTempF = 60,
-            CurrentHumidity = 48,
+            CurrentTempFahrUp = 60,
+            HumidityUpstairs = 48,
             Mode = HvacMode.Heat,
             Now = now,
             LastSensorUpdate = now
@@ -361,8 +361,8 @@ public sealed class ThermostatEngineTests
 
         var input = new ThermostatInput
         {
-            CurrentTempF = 68,
-            CurrentHumidity = 40,
+            CurrentTempFahrUp = 68,
+            HumidityUpstairs = 40,
             LastMotionDetected = now.AddMinutes(-30),
             Mode = HvacMode.Heat,
             Now = now,
@@ -388,8 +388,8 @@ public sealed class ThermostatEngineTests
 
         var input = new ThermostatInput
         {
-            CurrentTempF = 64,
-            CurrentHumidity = 40,
+            CurrentTempFahrUp = 64,
+            HumidityUpstairs = 40,
             Mode = HvacMode.Heat,
             Now = now,
             LastSensorUpdate = now
@@ -416,8 +416,8 @@ public sealed class ThermostatEngineTests
 
         var input = new ThermostatInput
         {
-            CurrentTempF = 64.5,
-            CurrentHumidity = 40,
+            CurrentTempFahrUp = 64.5,
+            HumidityUpstairs = 40,
             Mode = HvacMode.Heat,
             Now = now,
             LastSensorUpdate = now
@@ -442,8 +442,8 @@ public sealed class ThermostatEngineTests
 
         var input = new ThermostatInput
         {
-            CurrentTempF = 68,
-            CurrentHumidity = 40,
+            CurrentTempFahrUp = 68,
+            HumidityUpstairs = 40,
             LastMotionDetected = now.AddMinutes(-30),
             Mode = HvacMode.Heat,
             Now = now,
@@ -470,8 +470,8 @@ public sealed class ThermostatEngineTests
 
         var input = new ThermostatInput
         {
-            CurrentTempF = 68,
-            CurrentHumidity = 40,
+            CurrentTempFahrUp = 68,
+            HumidityUpstairs = 40,
             Mode = HvacMode.Heat,
             Now = now,
             LastSensorUpdate = now,
@@ -499,8 +499,8 @@ public sealed class ThermostatEngineTests
 
         var input = new ThermostatInput
         {
-            CurrentTempF = 68,
-            CurrentHumidity = 40,
+            CurrentTempFahrUp = 68,
+            HumidityUpstairs = 40,
             Mode = HvacMode.Heat,
             Now = now,
             LastSensorUpdate = now,
@@ -521,8 +521,8 @@ public sealed class ThermostatEngineTests
 
         var input = new ThermostatInput
         {
-            CurrentTempF = null,
-            CurrentHumidity = 40,
+            CurrentTempFahrUp = null,
+            HumidityUpstairs = 40,
             Mode = HvacMode.Heat,
             Now = now,
             LastSensorUpdate = now,
@@ -545,8 +545,8 @@ public sealed class ThermostatEngineTests
 
         var input = new ThermostatInput
         {
-            CurrentTempF = 70,
-            CurrentHumidity = null,
+            CurrentTempFahrUp = 70,
+            HumidityUpstairs = null,
             Mode = HvacMode.Heat,
             Now = now,
             LastSensorUpdate = now,
@@ -559,6 +559,93 @@ public sealed class ThermostatEngineTests
         Assert.False(output.Cool);
         Assert.False(output.Fan);
         Assert.Equal("No humidity reading", output.Reason);
+    }
+
+    [Fact]
+    public void CoolMode_WhenUpstairsHumidityIsAboveThreshold_TurnsOnCooling()
+    {
+        var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
+        var engine = new ThermostatEngine(new HvacSettings
+        {
+            AbsoluteHumidityCoolingOnThreshold = 9.5,
+            AbsoluteHumidityCoolingOffThreshold = 9.0
+        });
+
+        var input = new ThermostatInput
+        {
+            CurrentTempFahrUp = 72,
+            HumidityUpstairs = 50,      // AH about 9.83
+            CurrentTempFahrDown = 65,
+            HumidityDownstairs = 40,    // AH below threshold
+            Mode = HvacMode.Cool,
+            Now = now,
+            LastSensorUpdate = now,
+            LastMotionDetected = now
+        };
+
+        var (output, _) = engine.Evaluate(input, ThermostatRuntimeState.Empty);
+
+        Assert.False(output.Heat);
+        Assert.True(output.Cool);
+        Assert.True(output.Fan);
+    }
+
+    [Fact]
+    public void CoolMode_WhenDownstairsHumidityIsAboveThreshold_TurnsOnCooling()
+    {
+        var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
+        var engine = new ThermostatEngine(new HvacSettings
+        {
+            AbsoluteHumidityCoolingOnThreshold = 9.5,
+            AbsoluteHumidityCoolingOffThreshold = 9.0
+        });
+
+        var input = new ThermostatInput
+        {
+            CurrentTempFahrUp = 68,
+            HumidityUpstairs = 40,      // AH below threshold
+            CurrentTempFahrDown = 72,
+            HumidityDownstairs = 50,    // AH about 9.83
+            Mode = HvacMode.Cool,
+            Now = now,
+            LastSensorUpdate = now,
+            LastMotionDetected = now
+        };
+
+        var (output, _) = engine.Evaluate(input, ThermostatRuntimeState.Empty);
+
+        Assert.False(output.Heat);
+        Assert.True(output.Cool);
+        Assert.True(output.Fan);
+    }
+
+    [Fact]
+    public void CoolMode_WhenBothHumidityReadingsAreBelowThreshold_DoesNotTurnOnCooling()
+    {
+        var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
+        var engine = new ThermostatEngine(new HvacSettings
+        {
+            AbsoluteHumidityCoolingOnThreshold = 9.5,
+            AbsoluteHumidityCoolingOffThreshold = 9.0
+        });
+
+        var input = new ThermostatInput
+        {
+            CurrentTempFahrUp = 68,
+            HumidityUpstairs = 40,      // AH below threshold
+            CurrentTempFahrDown = 65,
+            HumidityDownstairs = 40,    // AH below threshold
+            Mode = HvacMode.Cool,
+            Now = now,
+            LastSensorUpdate = now,
+            LastMotionDetected = now
+        };
+
+        var (output, _) = engine.Evaluate(input, ThermostatRuntimeState.Empty);
+
+        Assert.False(output.Heat);
+        Assert.False(output.Cool);
+        Assert.True(output.Fan);
     }
 
 }

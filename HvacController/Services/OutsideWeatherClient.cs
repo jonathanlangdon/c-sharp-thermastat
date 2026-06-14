@@ -3,7 +3,7 @@ using HvacController.Models;
 
 namespace HvacController.Services;
 
-public sealed class OutsideWeatherClient
+public sealed class OutsideWeatherClient : IOutsideWeatherClient
 {
     private readonly HttpClient _httpClient;
     private readonly string _station;

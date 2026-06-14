@@ -5,51 +5,37 @@ namespace HvacController;
 public class Worker : BackgroundService
 {
     private readonly ILogger<Worker> _logger;
+    private readonly ThermostatCycleRunner _cycleRunner;
     private readonly IRelayService _relays;
 
     public Worker(
         ILogger<Worker> logger,
+        ThermostatCycleRunner cycleRunner,
         IRelayService relays)
     {
         _logger = logger;
+        _cycleRunner = cycleRunner;
         _relays = relays;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("HVAC controller relay test starting.");
+        _logger.LogInformation("HVAC controller starting.");
 
-        _logger.LogInformation("All relays OFF.");
         _relays.AllOff();
-        await Task.Delay(TimeSpan.FromSeconds(3), stoppingToken);
-
-        _logger.LogInformation("Heat relay ON for 2 seconds.");
-        _relays.SetRelays(heat: true, cool: false, fan: false);
-        await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
-
-        _logger.LogInformation("All relays OFF.");
-        _relays.AllOff();
-        await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
-
-        _logger.LogInformation("Cool + fan relays ON for 2 seconds.");
-        _relays.SetRelays(heat: false, cool: true, fan: true);
-        await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
-
-        _logger.LogInformation("All relays OFF.");
-        _relays.AllOff();
-        await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
-
-        _logger.LogInformation("Fan relay ON for 2 seconds.");
-        _relays.SetRelays(heat: false, cool: false, fan: true);
-        await Task.Delay(TimeSpan.FromSeconds(2), stoppingToken);
-
-        _logger.LogInformation("All relays OFF.");
-        _relays.AllOff();
-
-        _logger.LogInformation("Relay test complete. Idling with all relays OFF.");
 
         while (!stoppingToken.IsCancellationRequested)
         {
+            var now = DateTimeOffset.Now;
+            var output = _cycleRunner.RunOnce(now);
+
+            _logger.LogInformation(
+                "HVAC output: Heat={Heat}, Cool={Cool}, Fan={Fan}, Reason={Reason}",
+                output.Heat,
+                output.Cool,
+                output.Fan,
+                output.Reason);
+
             await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
         }
     }

@@ -1,4 +1,5 @@
 using HvacController;
+using HvacController.Models;
 using HvacController.Services;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -10,6 +11,11 @@ builder.Services.AddSingleton<IRelayService, NoOpRelayService>();
 // builder.Services.AddSingleton<IRelayService>(_ => new RelayService(activeHigh: false));
 
 builder.Services.AddHostedService<Worker>();
+
+builder.Services.AddSingleton<IndoorSensorState>();
+builder.Services.AddSingleton<ThermostatInputBuilder>();
+builder.Services.AddSingleton(new HvacSettings());
+builder.Services.AddSingleton<ThermostatCycleRunner>();
 
 builder.Services.AddSingleton<OutsideWeatherState>();
 

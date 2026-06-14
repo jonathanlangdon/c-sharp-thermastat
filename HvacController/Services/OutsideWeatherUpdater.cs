@@ -1,6 +1,6 @@
 namespace HvacController.Services;
 
-public sealed class OutsideWeatherUpdater
+public sealed class OutsideWeatherUpdater : IOutsideWeatherUpdater
 {
     private readonly IOutsideWeatherClient _client;
     private readonly OutsideWeatherState _state;

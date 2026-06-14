@@ -2,7 +2,7 @@ using System.Device.Gpio;
 
 namespace HvacController.Services;
 
-public sealed class RelayService : IDisposable
+public sealed class RelayService : IRelayService, IDisposable
 {
     private readonly GpioController _gpio;
     private readonly bool _activeHigh;

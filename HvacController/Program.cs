@@ -2,7 +2,14 @@ using HvacController;
 using HvacController.Services;
 
 var builder = Host.CreateApplicationBuilder(args);
-// builder.Services.AddHostedService<Worker>();
+
+// Choose Development or Live-Run Mode below
+// Development/no-GPIO mode
+builder.Services.AddSingleton<IRelayService, NoOpRelayService>();
+// Live Run Mode w/ real relays
+// builder.Services.AddSingleton<IRelayService>(_ => new RelayService(activeHigh: false));
+
+builder.Services.AddHostedService<Worker>();
 
 builder.Services.AddSingleton<OutsideWeatherState>();
 

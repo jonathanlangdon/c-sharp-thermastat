@@ -5,16 +5,14 @@ namespace HvacController;
 public class Worker : BackgroundService
 {
     private readonly ILogger<Worker> _logger;
-    private readonly RelayService _relays;
+    private readonly IRelayService _relays;
 
-    public Worker(ILogger<Worker> logger)
+    public Worker(
+        ILogger<Worker> logger,
+        IRelayService relays)
     {
         _logger = logger;
-
-        // Your relay board is active-low:
-        // GPIO 1 = OFF
-        // GPIO 0 = ON
-        _relays = new RelayService(activeHigh: false);
+        _relays = relays;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)

@@ -12,3 +12,12 @@ dotnet test
 
 #Source of outside weather
 https://api.weather.gov/stations/KMKG/observations/latest
+
+
+#upstairs ESP32 MQTT JSON Format
+{
+  "temperatureFahr": 72.1,
+  "relativeHumidity": 48.5,
+  "motionDetected": true,
+  "mode": "Cool"
+}

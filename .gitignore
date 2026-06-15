@@ -427,3 +427,7 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+#wifi secrets
+secrets.h
+**/secrets.h

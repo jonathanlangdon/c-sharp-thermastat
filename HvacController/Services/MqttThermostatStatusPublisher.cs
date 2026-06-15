@@ -22,6 +22,7 @@ public sealed class MqttThermostatStatusPublisher : IThermostatStatusPublisher
         return _mqttPublisher.PublishAsync(
             Topic,
             payload,
+            retain: true,
             cancellationToken);
     }
 }

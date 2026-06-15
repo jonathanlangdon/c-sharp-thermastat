@@ -22,6 +22,7 @@ public sealed class MqttMessagePublisher : IMqttMessagePublisher
     public async Task PublishAsync(
         string topic,
         string payload,
+        bool retain,
         CancellationToken cancellationToken)
     {
         var mqttFactory = new MqttClientFactory();
@@ -38,6 +39,7 @@ public sealed class MqttMessagePublisher : IMqttMessagePublisher
         var message = new MqttApplicationMessageBuilder()
             .WithTopic(topic)
             .WithPayload(Encoding.UTF8.GetBytes(payload))
+            .WithRetainFlag(retain)
             .Build();
 
         await mqttClient.PublishAsync(message, cancellationToken);

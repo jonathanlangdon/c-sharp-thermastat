@@ -39,6 +39,8 @@ public sealed class MqttThermostatStatusPublisherTests
 
         Assert.True(root.GetProperty("cool").GetBoolean());
         Assert.True(root.GetProperty("fan").GetBoolean());
+        Assert.True(mqttPublisher.Retain);
+        Assert.Equal("hvac/status", mqttPublisher.Topic);
         Assert.Equal("Cool", root.GetProperty("mode").GetString());
         Assert.Equal(9.83, root.GetProperty("controlAbsoluteHumidity").GetDouble());
         Assert.Equal(8.16, root.GetProperty("downstairsAbsoluteHumidity").GetDouble());
@@ -48,14 +50,17 @@ public sealed class MqttThermostatStatusPublisherTests
     {
         public string? Topic { get; private set; }
         public string? Payload { get; private set; }
+        public bool Retain { get; private set; }
 
         public Task PublishAsync(
             string topic,
             string payload,
+            bool retain,
             CancellationToken cancellationToken)
         {
             Topic = topic;
             Payload = payload;
+            Retain = retain;
 
             return Task.CompletedTask;
         }

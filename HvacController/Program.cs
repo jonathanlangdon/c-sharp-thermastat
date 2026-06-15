@@ -4,9 +4,11 @@ using HvacController.Services;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-// Choose Development or Live-Run Mode below
-// "dev" or "live"
-var runStatus = "dev";
+var appSettings = builder.Configuration
+    .GetSection("AppSettings")
+    .Get<AppSettings>() ?? new AppSettings();
+
+var runStatus = appSettings.RunStatus.Trim().ToLowerInvariant();
 
 if (runStatus == "live")
 {

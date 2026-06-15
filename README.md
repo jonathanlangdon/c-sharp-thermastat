@@ -163,7 +163,7 @@ dotnet run
 mosquitto_sub -h localhost -t hvac/status -v
 
 3rd Terminal(alter as desired):
-langdon@basement:~$ mosquitto_pub -h localhost -t hvac/upstairs/sensor -m '{
+mosquitto_pub -h localhost -t hvac/upstairs/sensor -m '{
   "temperatureFahr": 66.1,
   "relativeHumidity": 50,
   "motionDetected": true,

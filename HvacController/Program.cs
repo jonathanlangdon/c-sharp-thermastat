@@ -9,11 +9,13 @@ var builder = Host.CreateApplicationBuilder(args);
 
 // Choose Development or Live-Run Mode below
 
-// (1) Development/no-GPIO mode
-// builder.Services.AddSingleton<IRelayService, NoOpRelayService>();
+// (1) Development/no-GPIO/no-sensor mode
+builder.Services.AddSingleton<IRelayService, NoOpRelayService>();
+builder.Services.AddSingleton<IDownstairsSensorReader, NoOpDownstairsSensorReader>();
 
-// (2) Live Run Mode w/ real relays
-builder.Services.AddSingleton<IRelayService>(_ => new RelayService(activeHigh: false));
+// (2) Live Run Mode w/ real relays & sensors
+// builder.Services.AddSingleton<IRelayService>(_ => new RelayService(activeHigh: false));
+// builder.Services.AddSingleton<IDownstairsSensorReader, Sht45DownstairsSensorReader>();
 
 //
 //
@@ -21,12 +23,14 @@ builder.Services.AddSingleton<IRelayService>(_ => new RelayService(activeHigh: f
 builder.Services.AddHostedService<Worker>();
 builder.Services.AddHostedService<OutsideWeatherBackgroundService>();
 builder.Services.AddHostedService<UpstairsSensorMqttSubscriber>();
+builder.Services.AddHostedService<DownstairsSensorBackgroundService>();
 
 builder.Services.AddSingleton<IndoorSensorState>();
 builder.Services.AddSingleton<ThermostatInputBuilder>();
 builder.Services.AddSingleton(new HvacSettings());
 builder.Services.AddSingleton<ThermostatCycleRunner>();
 builder.Services.AddSingleton<UpstairsSensorMessageHandler>();
+builder.Services.AddSingleton<IDownstairsSensorUpdater, DownstairsSensorUpdater>();
 builder.Services.AddSingleton<OutsideWeatherState>();
 builder.Services.AddSingleton<IOutsideWeatherUpdater, OutsideWeatherUpdater>();
 builder.Services.AddSingleton<IOutsideWeatherClient>(_ =>

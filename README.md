@@ -153,16 +153,24 @@ Heat
 Cool
 ```
 
-### Publish a Test MQTT Message
+### Publish a Test MQTT Message in development mode 
 
-```bash
-mosquitto_pub -h localhost -t hvac/upstairs/sensor -m '{
-  "temperatureFahr": 72.1,
+1st Terminal:
+dotnet run
+(see how it responds bassed on mosquitto)
+
+2nd Terminal:
+mosquitto_sub -h localhost -t hvac/status -v
+
+3rd Terminal(alter as desired):
+langdon@basement:~$ mosquitto_pub -h localhost -t hvac/upstairs/sensor -m '{
+  "temperatureFahr": 66.1,
   "relativeHumidity": 50,
   "motionDetected": true,
-  "mode": "Cool"
+  "mode": "Heat"
 }'
-```
+
+
 
 ## Outside Weather Source
 

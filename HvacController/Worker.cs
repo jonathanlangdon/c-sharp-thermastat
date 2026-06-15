@@ -27,7 +27,9 @@ public class Worker : BackgroundService
         while (!stoppingToken.IsCancellationRequested)
         {
             var now = DateTimeOffset.Now;
-            var output = _cycleRunner.RunOnce(now);
+            var output = await _cycleRunner.RunOnceAsync(
+                now,
+                stoppingToken);
 
             _logger.LogInformation(
                 "HVAC output: Heat={Heat}, Cool={Cool}, Fan={Fan}, Reason={Reason}",

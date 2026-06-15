@@ -6,7 +6,7 @@ namespace HvacController.Tests;
 public sealed class ThermostatCycleRunnerTests
 {
     [Fact]
-    public void RunOnce_WhenCoolingIsNeeded_SendsCoolAndFanToRelays()
+    public async Task RunOnce_WhenCoolingIsNeeded_SendsCoolAndFanToRelays()
     {
         var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
 
@@ -31,9 +31,11 @@ public sealed class ThermostatCycleRunnerTests
         var runner = new ThermostatCycleRunner(
             inputBuilder,
             new HvacSettings(),
-            relays);
+            relays,
+            new NoOpThermostatStatusPublisher(),
+            outsideState);
 
-        runner.RunOnce(now);
+        await runner.RunOnceAsync(now, CancellationToken.None);
 
         Assert.False(relays.Heat);
         Assert.True(relays.Cool);
@@ -41,7 +43,7 @@ public sealed class ThermostatCycleRunnerTests
     }
 
     [Fact]
-    public void RunOnce_WhenNoTemperatureReading_SendsAllOffToRelays()
+    public async Task RunOnce_WhenNoTemperatureReading_SendsAllOffToRelays()
     {
         var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
 
@@ -54,9 +56,11 @@ public sealed class ThermostatCycleRunnerTests
         var runner = new ThermostatCycleRunner(
             inputBuilder,
             new HvacSettings(),
-            relays);
+            relays,
+            new NoOpThermostatStatusPublisher(),
+            outsideState);
 
-        runner.RunOnce(now);
+        await runner.RunOnceAsync(now, CancellationToken.None);
 
         Assert.False(relays.Heat);
         Assert.False(relays.Cool);

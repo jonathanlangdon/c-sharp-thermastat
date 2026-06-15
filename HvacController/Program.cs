@@ -4,27 +4,29 @@ using HvacController.Services;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-//
-//
-
 // Choose Development or Live-Run Mode below
+// "dev" or "live"
+var runStatus = "dev";
 
-// (1) Development/no-GPIO/no-sensor mode
-builder.Services.AddSingleton<IRelayService, NoOpRelayService>();
-builder.Services.AddSingleton<IDownstairsSensorReader, NoOpDownstairsSensorReader>();
-
-// (2) Live Run Mode w/ real relays & sensors
-// builder.Services.AddSingleton<IRelayService>(_ => new RelayService(activeHigh: false));
-// builder.Services.AddSingleton<IDownstairsSensorReader, Sht45DownstairsSensorReader>();
-
-//
-//
+if (runStatus == "live")
+{
+    builder.Services.AddSingleton<IRelayService>(_ => new RelayService(activeHigh: false));
+    builder.Services.AddSingleton<IDownstairsSensorReader, Sht45DownstairsSensorReader>();
+}
+else
+{
+    builder.Services.AddSingleton<IRelayService, NoOpRelayService>();
+    builder.Services.AddSingleton<IDownstairsSensorReader, NoOpDownstairsSensorReader>();
+}
 
 builder.Services.AddHostedService<Worker>();
 builder.Services.AddHostedService<OutsideWeatherBackgroundService>();
 builder.Services.AddHostedService<UpstairsSensorMqttSubscriber>();
 builder.Services.AddHostedService<DownstairsSensorBackgroundService>();
 
+// MQTT status publishing is safe in both dev and live modes.
+builder.Services.AddSingleton<IMqttMessagePublisher, MqttMessagePublisher>();
+builder.Services.AddSingleton<IThermostatStatusPublisher, MqttThermostatStatusPublisher>();
 builder.Services.AddSingleton<IndoorSensorState>();
 builder.Services.AddSingleton<ThermostatInputBuilder>();
 builder.Services.AddSingleton(new HvacSettings());

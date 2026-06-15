@@ -6,24 +6,21 @@ namespace HvacController.Services;
 
 public sealed class Sht45DownstairsSensorReader : IDownstairsSensorReader, IDisposable
 {
-    private readonly I2cDevice _device;
-    private readonly Sht4x _sensor;
-
-    public Sht45DownstairsSensorReader()
-    {
-        var settings = new I2cConnectionSettings(
-            busId: 1,
-            deviceAddress: Sht4x.DefaultI2cAddress);
-
-        _device = I2cDevice.Create(settings);
-        _sensor = new Sht4x(_device);
-    }
+    private I2cDevice? _device;
+    private Sht4x? _sensor;
 
     public async Task<DownstairsSensorReading?> ReadAsync(
         CancellationToken cancellationToken)
     {
         try
         {
+            EnsureSensorInitialized();
+
+            if (_sensor is null)
+            {
+                return null;
+            }
+
             var (relativeHumidity, temperature) =
                 await _sensor.ReadHumidityAndTemperatureAsync();
 
@@ -48,13 +45,52 @@ public sealed class Sht45DownstairsSensorReader : IDownstairsSensorReader, IDisp
         }
         catch
         {
+            DisposeSensor();
+
             return null;
         }
     }
 
+    private void EnsureSensorInitialized()
+    {
+        if (_sensor is not null)
+        {
+            return;
+        }
+
+        I2cDevice? device = null;
+
+        try
+        {
+            var settings = new I2cConnectionSettings(
+                busId: 1,
+                deviceAddress: Sht4x.DefaultI2cAddress);
+
+            device = I2cDevice.Create(settings);
+            var sensor = new Sht4x(device);
+
+            _device = device;
+            _sensor = sensor;
+        }
+        catch
+        {
+            device?.Dispose();
+
+            throw;
+        }
+    }
+
+    private void DisposeSensor()
+    {
+        _sensor?.Dispose();
+        _device?.Dispose();
+
+        _sensor = null;
+        _device = null;
+    }
+
     public void Dispose()
     {
-        _sensor.Dispose();
-        _device.Dispose();
+        DisposeSensor();
     }
 }

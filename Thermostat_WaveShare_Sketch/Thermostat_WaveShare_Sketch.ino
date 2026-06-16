@@ -4,8 +4,8 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include "TCA9554.h"
-#include "TouchDrv.hpp"
 #include "secrets.h"
+#include <Adafruit_SHT4x.h>
 
 #include <Fonts/FreeSans9pt7b.h>
 #include <Fonts/FreeSans12pt7b.h>
@@ -22,9 +22,9 @@
 #define ROTATION 1
 #define GFX_BL 6
 
-#define TOUCH_SDA 8
-#define TOUCH_SCL 10
-#define TOUCH_RST -1
+#define SHT45_SDA 8
+#define SHT45_SCL 7
+
 
 #define SCREEN_W 480
 #define SCREEN_H 320
@@ -38,6 +38,20 @@
 #define SAFE_H (SCREEN_H - SAFE_Y - SAFE_BOTTOM_MARGIN)
 
 #define BOTTOM_BAR_H 42
+
+#define LD2410_OUT_PIN 43
+
+bool motionDetected = false;
+
+Adafruit_SHT4x sht45 = Adafruit_SHT4x();
+
+TwoWire sht45Wire = TwoWire(1);
+
+bool sht45Ready = false;
+double upstairsTemperatureF = NAN;
+double upstairsRelativeHumidity = NAN;
+
+String selectedMode = "Cool";
 
 const char* MQTT_HOST = "hvac.local";
 const int MQTT_PORT = 1883;
@@ -77,13 +91,6 @@ Arduino_Canvas *gfx = new Arduino_Canvas(
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
 
-TwoWire touchWire = TwoWire(1);
-TouchDrvCSTXXX touch;
-
-int16_t touchX[5];
-int16_t touchY[5];
-
-bool touchReady = false;
 
 #define HVAC_BG         RGB565_BLACK
 #define HVAC_TEXT       RGB565_WHITE
@@ -110,11 +117,12 @@ struct HvacStatus
 HvacStatus latestStatus;
 
 unsigned long lastPublishMs = 0;
-const unsigned long publishIntervalMs = 10000;
+const unsigned long publishIntervalMs = 30000;
 
 void initDisplay()
 {
   Wire.begin(21, 22);
+  Wire.setTimeOut(100);
 
   TCA.begin();
   TCA.pinMode1(1, OUTPUT);
@@ -135,97 +143,6 @@ void initDisplay()
   digitalWrite(GFX_BL, HIGH);
 }
 
-uint8_t findTouchAddress()
-{
-  touchWire.beginTransmission(CST816_SLAVE_ADDRESS);
-  if (touchWire.endTransmission() == 0)
-  {
-    return CST816_SLAVE_ADDRESS;
-  }
-
-  touchWire.beginTransmission(CST226SE_SLAVE_ADDRESS);
-  if (touchWire.endTransmission() == 0)
-  {
-    return CST226SE_SLAVE_ADDRESS;
-  }
-
-  touchWire.beginTransmission(CST328_SLAVE_ADDRESS);
-  if (touchWire.endTransmission() == 0)
-  {
-    return CST328_SLAVE_ADDRESS;
-  }
-
-  return 0xFF;
-}
-
-void initTouch()
-{
-  touchWire.begin(TOUCH_SDA, TOUCH_SCL);
-
-  uint8_t address = findTouchAddress();
-
-  if (address == 0xFF)
-  {
-    Serial.println("Could not find touch chip.");
-    touchReady = false;
-    return;
-  }
-
-  touch.setPins(TOUCH_RST, -1);
-
-  bool result = touch.begin(
-    touchWire,
-    address,
-    TOUCH_SDA,
-    TOUCH_SCL
-  );
-
-  if (!result)
-  {
-    Serial.println("Failed to initialize touch.");
-    touchReady = false;
-    return;
-  }
-
-  Serial.print("Touch initialized. Model: ");
-  Serial.println(touch.getModelName());
-
-  touchReady = true;
-}
-
-void pollTouch()
-{
-  if (!touchReady)
-  {
-    return;
-  }
-
-  static unsigned long lastTouchMs = 0;
-  unsigned long now = millis();
-
-  if (now - lastTouchMs < 150)
-  {
-    return;
-  }
-
-  uint8_t touched = touch.getPoint(
-    touchX,
-    touchY,
-    touch.getSupportTouchPoint()
-  );
-
-  if (!touched)
-  {
-    return;
-  }
-
-  lastTouchMs = now;
-
-  Serial.print("Touch raw X=");
-  Serial.print(touchX[0]);
-  Serial.print(" Y=");
-  Serial.println(touchY[0]);
-}
 
 void setFontSmall(uint16_t color)
 {
@@ -456,14 +373,22 @@ void connectWiFi()
   Serial.println(WiFi.localIP());
 }
 
-void publishFakeSensorReading()
+void publishUpstairsSensorReading()
 {
+  bool hasReading = readSht45();
+
+  if (!hasReading)
+  {
+    Serial.println("Skipping upstairs sensor publish because SHT45 read failed.");
+    return;
+  }
+
   StaticJsonDocument<256> doc;
 
-  doc["temperatureFahr"] = 65.0;
-  doc["relativeHumidity"] = 50.0;
-  doc["motionDetected"] = true;
-  doc["mode"] = "Heat";
+  doc["temperatureFahr"] = round(upstairsTemperatureF * 10.0) / 10.0;
+  doc["relativeHumidity"] = round(upstairsRelativeHumidity * 10.0) / 10.0;
+  doc["motionDetected"] = motionDetected;
+  doc["mode"] = selectedMode;
 
   char buffer[256];
   size_t length = serializeJson(doc, buffer);
@@ -541,6 +466,33 @@ void connectMqtt()
   }
 }
 
+void scanMainI2CBus()
+{
+  Serial.println("Scanning main I2C bus SDA=21 SCL=22");
+
+  for (uint8_t address = 1; address < 127; address++)
+  {
+    Wire.beginTransmission(address);
+    uint8_t error = Wire.endTransmission();
+
+    if (error == 0)
+    {
+      Serial.print("Found I2C device at 0x");
+
+      if (address < 16)
+      {
+        Serial.print("0");
+      }
+
+      Serial.println(address, HEX);
+    }
+
+    delay(2);
+  }
+
+  Serial.println("I2C scan complete.");
+}
+
 void scanI2CBus(TwoWire& bus, int sda, int scl, const char* name)
 {
   Serial.print("Scanning ");
@@ -582,26 +534,148 @@ void scanI2CBus(TwoWire& bus, int sda, int scl, const char* name)
   Serial.println();
 }
 
+bool i2cAddressResponds(uint8_t address)
+{
+  Wire.beginTransmission(address);
+  uint8_t error = Wire.endTransmission();
+
+  return error == 0;
+}
+
+bool sht45AddressResponds(uint8_t address)
+{
+  sht45Wire.beginTransmission(address);
+  uint8_t error = sht45Wire.endTransmission();
+
+  return error == 0;
+}
+
+void initSht45()
+{
+  Serial.println("Initializing upstairs SHT45 on GPIO7/GPIO8...");
+
+  sht45Wire.begin(SHT45_SDA, SHT45_SCL);
+  sht45Wire.setTimeOut(100);
+
+  const uint8_t SHT45_ADDRESS = 0x44;
+
+  if (!sht45AddressResponds(SHT45_ADDRESS))
+  {
+    Serial.println("No SHT45 response at I2C address 0x44 on GPIO7/GPIO8.");
+    sht45Ready = false;
+    return;
+  }
+
+  Serial.println("SHT45 address responded. Starting library...");
+
+  if (!sht45.begin(&sht45Wire))
+  {
+    Serial.println("Could not start SHT45 library.");
+    sht45Ready = false;
+    return;
+  }
+
+  sht45.setPrecision(SHT4X_HIGH_PRECISION);
+  sht45.setHeater(SHT4X_NO_HEATER);
+
+  sht45Ready = true;
+  Serial.println("SHT45 initialized.");
+}
+
+bool readSht45()
+{
+  if (!sht45Ready)
+  {
+    return false;
+  }
+
+  sensors_event_t humidity;
+  sensors_event_t temperature;
+
+  if (!sht45.getEvent(&humidity, &temperature))
+  {
+    Serial.println("Failed to read SHT45.");
+    return false;
+  }
+
+  upstairsTemperatureF = temperature.temperature * 9.0 / 5.0 + 32.0;
+  upstairsRelativeHumidity = humidity.relative_humidity;
+
+  Serial.print("SHT45 temp F: ");
+  Serial.println(upstairsTemperatureF, 1);
+
+  Serial.print("SHT45 RH: ");
+  Serial.println(upstairsRelativeHumidity, 1);
+
+  return true;
+}
+
+void scanSht45Bus()
+{
+  Serial.println("Scanning SHT45 I2C bus SDA=7 SCL=8");
+
+  sht45Wire.begin(SHT45_SDA, SHT45_SCL);
+  sht45Wire.setTimeOut(100);
+
+  for (uint8_t address = 1; address < 127; address++)
+  {
+    sht45Wire.beginTransmission(address);
+    uint8_t error = sht45Wire.endTransmission();
+
+    if (error == 0)
+    {
+      Serial.print("Found I2C device at 0x");
+
+      if (address < 16)
+      {
+        Serial.print("0");
+      }
+
+      Serial.println(address, HEX);
+    }
+
+    delay(2);
+  }
+
+  Serial.println("SHT45 I2C scan complete.");
+}
+
+void initLd2410Out()
+{
+  pinMode(LD2410_OUT_PIN, INPUT);
+  Serial.println("LD2410 OUT pin started.");
+}
+
+void pollLd2410Out()
+{
+  static bool lastMotionDetected = false;
+  static unsigned long lastPrintMs = 0;
+
+  motionDetected = digitalRead(LD2410_OUT_PIN) == HIGH;
+
+  if (motionDetected != lastMotionDetected || millis() - lastPrintMs > 3000)
+  {
+    lastMotionDetected = motionDetected;
+    lastPrintMs = millis();
+
+    Serial.print("LD2410 presence OUT: ");
+    Serial.println(motionDetected ? "yes" : "no");
+  }
+}
+
 void setup()
 {
   Serial.begin(115200);
   delay(1000);
 
   initDisplay();
+  initLd2410Out();
 
-  scanI2CBus(Wire, 21, 22, "display/control bus");
-
-  TwoWire probeWire = TwoWire(1);
-  scanI2CBus(probeWire, 8, 10, "old guessed touch bus");
-
-  TwoWire probeWire2 = TwoWire(0);
-  scanI2CBus(probeWire2, 5, 6, "generic GFX touch example bus");
-
-
-  // initTouch();
   drawThermostatScreen();
 
-  
+  scanSht45Bus();
+  initSht45();
+  readSht45();
 
   connectWiFi();
 
@@ -614,7 +688,21 @@ void setup()
 
 void loop()
 {
-  // pollTouch();
+  // pollLd2410();
+  // pollLd2410Raw();
+  pollLd2410Out();
+
+  // while (ld2410Serial.available())
+  // {
+  //   uint8_t b = ld2410Serial.read();
+
+  //   Serial.print("LD2410 byte: 0x");
+  //   if (b < 16)
+  //   {
+  //     Serial.print("0");
+  //   }
+  //   Serial.println(b, HEX);
+  // }
 
   if (WiFi.status() != WL_CONNECTED)
   {
@@ -633,6 +721,6 @@ void loop()
   if (now - lastPublishMs >= publishIntervalMs)
   {
     lastPublishMs = now;
-    publishFakeSensorReading();
+    publishUpstairsSensorReading();
   }
 }

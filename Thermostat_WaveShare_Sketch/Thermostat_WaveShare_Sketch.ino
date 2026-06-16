@@ -4,6 +4,7 @@
 #include <PubSubClient.h>
 #include <ArduinoJson.h>
 #include "TCA9554.h"
+#include "TouchDrv.hpp"
 #include "secrets.h"
 
 #include <Fonts/FreeSans9pt7b.h>
@@ -20,6 +21,23 @@
 
 #define ROTATION 1
 #define GFX_BL 6
+
+#define TOUCH_SDA 8
+#define TOUCH_SCL 10
+#define TOUCH_RST -1
+
+#define SCREEN_W 480
+#define SCREEN_H 320
+
+#define SAFE_X 45
+#define SAFE_Y 55
+#define SAFE_RIGHT_MARGIN 35
+#define SAFE_BOTTOM_MARGIN 40
+
+#define SAFE_W (SCREEN_W - SAFE_X - SAFE_RIGHT_MARGIN)
+#define SAFE_H (SCREEN_H - SAFE_Y - SAFE_BOTTOM_MARGIN)
+
+#define BOTTOM_BAR_H 42
 
 const char* MQTT_HOST = "hvac.local";
 const int MQTT_PORT = 1883;
@@ -58,6 +76,14 @@ Arduino_Canvas *gfx = new Arduino_Canvas(
 
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
+
+TwoWire touchWire = TwoWire(1);
+TouchDrvCSTXXX touch;
+
+int16_t touchX[5];
+int16_t touchY[5];
+
+bool touchReady = false;
 
 #define HVAC_BG         RGB565_BLACK
 #define HVAC_TEXT       RGB565_WHITE
@@ -109,6 +135,105 @@ void initDisplay()
   digitalWrite(GFX_BL, HIGH);
 }
 
+uint8_t findTouchAddress()
+{
+  touchWire.beginTransmission(CST816_SLAVE_ADDRESS);
+  if (touchWire.endTransmission() == 0)
+  {
+    return CST816_SLAVE_ADDRESS;
+  }
+
+  touchWire.beginTransmission(CST226SE_SLAVE_ADDRESS);
+  if (touchWire.endTransmission() == 0)
+  {
+    return CST226SE_SLAVE_ADDRESS;
+  }
+
+  touchWire.beginTransmission(CST328_SLAVE_ADDRESS);
+  if (touchWire.endTransmission() == 0)
+  {
+    return CST328_SLAVE_ADDRESS;
+  }
+
+  return 0xFF;
+}
+
+void initTouch()
+{
+  touchWire.begin(TOUCH_SDA, TOUCH_SCL);
+
+  uint8_t address = findTouchAddress();
+
+  if (address == 0xFF)
+  {
+    Serial.println("Could not find touch chip.");
+    touchReady = false;
+    return;
+  }
+
+  touch.setPins(TOUCH_RST, -1);
+
+  bool result = touch.begin(
+    touchWire,
+    address,
+    TOUCH_SDA,
+    TOUCH_SCL
+  );
+
+  if (!result)
+  {
+    Serial.println("Failed to initialize touch.");
+    touchReady = false;
+    return;
+  }
+
+  Serial.print("Touch initialized. Model: ");
+  Serial.println(touch.getModelName());
+
+  touchReady = true;
+}
+
+void pollTouch()
+{
+  if (!touchReady)
+  {
+    return;
+  }
+
+  static unsigned long lastTouchMs = 0;
+  unsigned long now = millis();
+
+  if (now - lastTouchMs < 150)
+  {
+    return;
+  }
+
+  uint8_t touched = touch.getPoint(
+    touchX,
+    touchY,
+    touch.getSupportTouchPoint()
+  );
+
+  if (!touched)
+  {
+    return;
+  }
+
+  lastTouchMs = now;
+
+  Serial.print("Touch raw X=");
+  Serial.print(touchX[0]);
+  Serial.print(" Y=");
+  Serial.println(touchY[0]);
+}
+
+void setFontSmall(uint16_t color)
+{
+  gfx->setFont(&FreeSans9pt7b);
+  gfx->setTextSize(1);
+  gfx->setTextColor(color);
+}
+
 void setFontMedium(uint16_t color)
 {
   gfx->setFont(&FreeSans12pt7b);
@@ -117,13 +242,6 @@ void setFontMedium(uint16_t color)
 }
 
 void setFontHeading(uint16_t color)
-{
-  gfx->setFont(&FreeSansBold18pt7b);
-  gfx->setTextSize(1);
-  gfx->setTextColor(color);
-}
-
-void setFontBottom(uint16_t color)
 {
   gfx->setFont(&FreeSansBold18pt7b);
   gfx->setTextSize(1);
@@ -196,15 +314,15 @@ void drawTopBar()
   String outside = "Outside: ";
   outside += formatOneDecimal(latestStatus.outsideTemperature);
 
-  printAtString(24, 58, outside);
+  printAtString(SAFE_X, SAFE_Y + 20, outside);
 }
 
 void drawLargeTemperature()
 {
-  const int areaX = 0;
-  const int areaY = 72;
-  const int areaW = 300;
-  const int areaH = 175;
+  const int areaX = SAFE_X;
+  const int areaY = SAFE_Y + 40;
+  const int areaW = 245;
+  const int areaH = 125;
 
   String temp = formatOneDecimal(latestStatus.upstairsTemperature);
 
@@ -236,7 +354,7 @@ void drawLargeTemperature()
   getBounds(wholePart.c_str(), &FreeSansBold24pt7b, 2, &bigX1, &bigY1, &bigW, &bigH);
   getBounds(decimalPart.c_str(), &FreeSansBold24pt7b, 1, &smallX1, &smallY1, &smallW, &smallH);
 
-  int gap = 8;
+  int gap = 6;
   int totalW = bigW + gap + smallW;
 
   int startX = areaX + ((areaW - totalW) / 2);
@@ -249,57 +367,64 @@ void drawLargeTemperature()
   gfx->print(wholePart);
 
   int smallX = startX + bigW + gap;
-  int smallBaselineY = bigBaselineY;
 
   gfx->setFont(&FreeSansBold24pt7b);
   gfx->setTextSize(1);
   gfx->setTextColor(HVAC_TEXT);
-  gfx->setCursor(smallX - smallX1, smallBaselineY);
+  gfx->setCursor(smallX - smallX1, bigBaselineY);
   gfx->print(decimalPart);
 }
 
 void drawHumidityPanel()
 {
-  int x = 315;
-
-  setFontHeading(HVAC_TEXT);
-  printAt(x, 112, "Humidity");
+  int x = SAFE_X + 268;
+  int y = SAFE_Y + 48;
 
   setFontMedium(HVAC_TEXT);
+  printAt(x, y, "Humidity");
+
+  setFontSmall(HVAC_TEXT);
 
   String out = "Out: ";
   out += formatOneDecimal(latestStatus.outsideAbsoluteHumidity);
-  printAtString(x, 150, out);
+  printAtString(x, y + 34, out);
 
   String up = "Up: ";
   up += formatOneDecimal(latestStatus.upstairsAbsoluteHumidity);
-  printAtString(x, 185, up);
+  printAtString(x, y + 62, up);
 
   String down = "Down: ";
   down += formatOneDecimal(latestStatus.downstairsAbsoluteHumidity);
-  printAtString(x, 220, down);
+  printAtString(x, y + 90, down);
 }
 
 void drawBottomBar()
 {
-  int w = gfx->width();
-  int h = gfx->height();
+  int barY = SAFE_Y + SAFE_H - BOTTOM_BAR_H;
+  int barBottom = SAFE_Y + SAFE_H - 1;
+  int barH = barBottom - barY + 1;
 
-  int barY = h - 58;
-  int barH = h - barY;
+  int heatW = 300;
+  int coolW = SAFE_W - heatW;
 
-  int heatW = 350;
-  int coolW = w - heatW;
+  int heatX = SAFE_X;
+  int coolX = SAFE_X + heatW;
 
-  gfx->fillRect(0, barY, heatW, barH, HVAC_HEAT_FILL);
-  gfx->fillRect(heatW, barY, coolW, barH, HVAC_COOL_FILL);
+  // Clear the full bottom bar area first.
+  gfx->fillRect(SAFE_X, barY, SAFE_W, barH, HVAC_BG);
 
-  gfx->drawLine(0, barY, w - 1, barY, HVAC_LINE);
-  gfx->drawLine(heatW, barY, heatW, h - 1, HVAC_LINE);
+  // Fill both boxes with the exact same Y/H.
+  gfx->fillRect(heatX, barY, heatW, barH, HVAC_HEAT_FILL);
+  gfx->fillRect(coolX, barY, coolW, barH, HVAC_COOL_FILL);
 
-  setFontBottom(HVAC_TEXT);
-  drawCenteredTextInBox(0, barY, heatW, barH, "Heating to 70", HVAC_TEXT);
-  drawCenteredTextInBox(heatW, barY, coolW, barH, "Cool", HVAC_TEXT);
+  // Draw clean shared borders last.
+  gfx->drawLine(SAFE_X, barY, SAFE_X + SAFE_W - 1, barY, HVAC_LINE);
+  gfx->drawLine(SAFE_X, barBottom, SAFE_X + SAFE_W - 1, barBottom, HVAC_LINE);
+  gfx->drawLine(coolX, barY, coolX, barBottom, HVAC_LINE);
+
+  setFontMedium(HVAC_TEXT);
+  drawCenteredTextInBox(heatX, barY, heatW, barH, "Heating to 70", HVAC_TEXT);
+  drawCenteredTextInBox(coolX, barY, coolW, barH, "Cool", HVAC_TEXT);
 }
 
 void drawThermostatScreen()
@@ -335,7 +460,7 @@ void publishFakeSensorReading()
 {
   StaticJsonDocument<256> doc;
 
-  doc["temperatureFahr"] = 70.0;
+  doc["temperatureFahr"] = 65.0;
   doc["relativeHumidity"] = 50.0;
   doc["motionDetected"] = true;
   doc["mode"] = "Heat";
@@ -346,7 +471,8 @@ void publishFakeSensorReading()
   bool published = mqttClient.publish(
     SENSOR_TOPIC,
     buffer,
-    length);
+    length
+  );
 
   Serial.print("Published upstairs sensor message: ");
   Serial.println(published ? "yes" : "no");
@@ -358,7 +484,7 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length)
   Serial.print("MQTT message on topic: ");
   Serial.println(topic);
 
-  StaticJsonDocument<1024> doc;
+  StaticJsonDocument<2048> doc;
 
   DeserializationError error = deserializeJson(doc, payload, length);
 
@@ -415,16 +541,71 @@ void connectMqtt()
   }
 }
 
+void scanI2CBus(TwoWire& bus, int sda, int scl, const char* name)
+{
+  Serial.print("Scanning ");
+  Serial.print(name);
+  Serial.print(" SDA=");
+  Serial.print(sda);
+  Serial.print(" SCL=");
+  Serial.println(scl);
+
+  bus.begin(sda, scl);
+  delay(100);
+
+  bool foundAny = false;
+
+  for (uint8_t address = 1; address < 127; address++)
+  {
+    bus.beginTransmission(address);
+    uint8_t error = bus.endTransmission();
+
+    if (error == 0)
+    {
+      foundAny = true;
+      Serial.print("Found I2C device at 0x");
+
+      if (address < 16)
+      {
+        Serial.print("0");
+      }
+
+      Serial.println(address, HEX);
+    }
+  }
+
+  if (!foundAny)
+  {
+    Serial.println("No I2C devices found.");
+  }
+
+  Serial.println();
+}
+
 void setup()
 {
   Serial.begin(115200);
   delay(1000);
 
   initDisplay();
+
+  scanI2CBus(Wire, 21, 22, "display/control bus");
+
+  TwoWire probeWire = TwoWire(1);
+  scanI2CBus(probeWire, 8, 10, "old guessed touch bus");
+
+  TwoWire probeWire2 = TwoWire(0);
+  scanI2CBus(probeWire2, 5, 6, "generic GFX touch example bus");
+
+
+  // initTouch();
   drawThermostatScreen();
+
+  
 
   connectWiFi();
 
+  mqttClient.setBufferSize(2048);
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
   mqttClient.setCallback(onMqttMessage);
 
@@ -433,6 +614,8 @@ void setup()
 
 void loop()
 {
+  // pollTouch();
+
   if (WiFi.status() != WL_CONNECTED)
   {
     connectWiFi();

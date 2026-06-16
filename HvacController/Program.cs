@@ -25,10 +25,13 @@ builder.Services.AddHostedService<Worker>();
 builder.Services.AddHostedService<OutsideWeatherBackgroundService>();
 builder.Services.AddHostedService<UpstairsSensorMqttSubscriber>();
 builder.Services.AddHostedService<DownstairsSensorBackgroundService>();
+builder.Services.AddHostedService<MqttDataLoggerBackgroundService>();
 
 // MQTT status publishing is safe in both dev and live modes.
 builder.Services.AddSingleton<IMqttMessagePublisher, MqttMessagePublisher>();
 builder.Services.AddSingleton<IThermostatStatusPublisher, MqttThermostatStatusPublisher>();
+builder.Services.AddSingleton<ICsvLogWriter, CsvLogWriter>();
+builder.Services.AddSingleton<MqttDataLogger>();
 builder.Services.AddSingleton<IndoorSensorState>();
 builder.Services.AddSingleton<ThermostatInputBuilder>();
 builder.Services.AddSingleton(new HvacSettings());
@@ -37,6 +40,7 @@ builder.Services.AddSingleton<UpstairsSensorMessageHandler>();
 builder.Services.AddSingleton<IDownstairsSensorUpdater, DownstairsSensorUpdater>();
 builder.Services.AddSingleton<OutsideWeatherState>();
 builder.Services.AddSingleton<IOutsideWeatherUpdater, OutsideWeatherUpdater>();
+
 builder.Services.AddSingleton<IOutsideWeatherClient>(_ =>
 {
     var httpClient = new HttpClient

@@ -46,7 +46,7 @@ The controller runs on a Raspberry Pi, receives upstairs sensor data over MQTT f
 * Qoroos LD2410C human presence radar sensor
 * Waveshare ESP32-S3 3.5-inch capacitive touch display, Type B, 320x480 IPS panel
 
-## GPIO Relay Mapping
+## GPIO Pinout
 
 | HVAC Function |   GPIO | Physical Pin | Relay Input |
 | ------------- | -----: | -----------: | ----------- |

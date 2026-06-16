@@ -6,6 +6,7 @@
 #include "TCA9554.h"
 #include "secrets.h"
 #include <Adafruit_SHT4x.h>
+#include "esp_lcd_touch_axs15231b.h"
 
 #include <Fonts/FreeSans9pt7b.h>
 #include <Fonts/FreeSans12pt7b.h>
@@ -22,9 +23,11 @@
 #define ROTATION 1
 #define GFX_BL 6
 
-#define SHT45_SDA 8
-#define SHT45_SCL 7
+#define I2C_SDA 8
+#define I2C_SCL 7
 
+#define SHT45_SDA I2C_SDA
+#define SHT45_SCL I2C_SCL
 
 #define SCREEN_W 480
 #define SCREEN_H 320
@@ -37,15 +40,23 @@
 #define SAFE_W (SCREEN_W - SAFE_X - SAFE_RIGHT_MARGIN)
 #define SAFE_H (SCREEN_H - SAFE_Y - SAFE_BOTTOM_MARGIN)
 
+#define LD2410_OUT_PIN 43
+
 #define BOTTOM_BAR_H 42
 
-#define LD2410_OUT_PIN 43
+#define MODE_SMALL_W 90
+#define MODE_ANIMATION_STEPS 14
+#define MODE_ANIMATION_DELAY_MS 16
+
+int bottomBarHeatW = SAFE_W - MODE_SMALL_W;
+
+
+bool touchReady = false;
+unsigned long lastTouchLogMs = 0;
 
 bool motionDetected = false;
 
 Adafruit_SHT4x sht45 = Adafruit_SHT4x();
-
-TwoWire sht45Wire = TwoWire(1);
 
 bool sht45Ready = false;
 double upstairsTemperatureF = NAN;
@@ -119,9 +130,22 @@ HvacStatus latestStatus;
 unsigned long lastPublishMs = 0;
 const unsigned long publishIntervalMs = 30000;
 
+
+void initTouch()
+{
+  Serial.println("Initializing AXS15231B touch...");
+
+  bsp_touch_init(&Wire, -1, 0, 320, 480);
+
+  touchReady = true;
+
+  Serial.println("AXS15231B touch initialized.");
+}
+
+
 void initDisplay()
 {
-  Wire.begin(21, 22);
+  Wire.begin(I2C_SDA, I2C_SCL);
   Wire.setTimeOut(100);
 
   TCA.begin();
@@ -133,6 +157,8 @@ void initDisplay()
   delay(10);
   TCA.write1(1, 1);
   delay(200);
+
+  initTouch();
 
   if (!gfx->begin())
   {
@@ -315,33 +341,95 @@ void drawHumidityPanel()
   printAtString(x, y + 90, down);
 }
 
+int getTargetHeatWidth()
+{
+  if (selectedMode == "Cool")
+  {
+    return MODE_SMALL_W;
+  }
+
+  return SAFE_W - MODE_SMALL_W;
+}
+
 void drawBottomBar()
 {
   int barY = SAFE_Y + SAFE_H - BOTTOM_BAR_H;
   int barBottom = SAFE_Y + SAFE_H - 1;
   int barH = barBottom - barY + 1;
 
-  int heatW = 300;
+  int heatW = bottomBarHeatW;
   int coolW = SAFE_W - heatW;
 
   int heatX = SAFE_X;
   int coolX = SAFE_X + heatW;
 
-  // Clear the full bottom bar area first.
+  const char* heatLabel = heatW > 150
+    ? "Heating to 70"
+    : "Heat";
+
+  const char* coolLabel = coolW > 150
+    ? "Cooling"
+    : "Cool";
+
   gfx->fillRect(SAFE_X, barY, SAFE_W, barH, HVAC_BG);
 
-  // Fill both boxes with the exact same Y/H.
   gfx->fillRect(heatX, barY, heatW, barH, HVAC_HEAT_FILL);
   gfx->fillRect(coolX, barY, coolW, barH, HVAC_COOL_FILL);
 
-  // Draw clean shared borders last.
   gfx->drawLine(SAFE_X, barY, SAFE_X + SAFE_W - 1, barY, HVAC_LINE);
   gfx->drawLine(SAFE_X, barBottom, SAFE_X + SAFE_W - 1, barBottom, HVAC_LINE);
   gfx->drawLine(coolX, barY, coolX, barBottom, HVAC_LINE);
 
   setFontMedium(HVAC_TEXT);
-  drawCenteredTextInBox(heatX, barY, heatW, barH, "Heating to 70", HVAC_TEXT);
-  drawCenteredTextInBox(coolX, barY, coolW, barH, "Cool", HVAC_TEXT);
+
+  drawCenteredTextInBox(
+    heatX,
+    barY,
+    heatW,
+    barH,
+    heatLabel,
+    HVAC_TEXT);
+
+  drawCenteredTextInBox(
+    coolX,
+    barY,
+    coolW,
+    barH,
+    coolLabel,
+    HVAC_TEXT);
+}
+
+void animateBottomBarToSelectedMode()
+{
+  int startHeatW = bottomBarHeatW;
+  int targetHeatW = getTargetHeatWidth();
+
+  if (startHeatW == targetHeatW)
+  {
+    drawBottomBar();
+    gfx->flush();
+    return;
+  }
+
+  for (int step = 1; step <= MODE_ANIMATION_STEPS; step++)
+  {
+    float progress = (float)step / (float)MODE_ANIMATION_STEPS;
+
+    // Smoothstep easing: starts and ends softer than a straight linear slide.
+    progress = progress * progress * (3.0 - 2.0 * progress);
+
+    bottomBarHeatW = startHeatW +
+      (int)((targetHeatW - startHeatW) * progress);
+
+    drawBottomBar();
+    gfx->flush();
+
+    delay(MODE_ANIMATION_DELAY_MS);
+  }
+
+  bottomBarHeatW = targetHeatW;
+  drawBottomBar();
+  gfx->flush();
 }
 
 void drawThermostatScreen()
@@ -544,18 +632,15 @@ bool i2cAddressResponds(uint8_t address)
 
 bool sht45AddressResponds(uint8_t address)
 {
-  sht45Wire.beginTransmission(address);
-  uint8_t error = sht45Wire.endTransmission();
+  Wire.beginTransmission(address);
+  uint8_t error = Wire.endTransmission();
 
   return error == 0;
 }
 
 void initSht45()
 {
-  Serial.println("Initializing upstairs SHT45 on GPIO7/GPIO8...");
-
-  sht45Wire.begin(SHT45_SDA, SHT45_SCL);
-  sht45Wire.setTimeOut(100);
+  Serial.println("Initializing upstairs SHT45 on shared I2C bus GPIO8/GPIO7...");
 
   const uint8_t SHT45_ADDRESS = 0x44;
 
@@ -568,7 +653,7 @@ void initSht45()
 
   Serial.println("SHT45 address responded. Starting library...");
 
-  if (!sht45.begin(&sht45Wire))
+  if (!sht45.begin(&Wire))
   {
     Serial.println("Could not start SHT45 library.");
     sht45Ready = false;
@@ -612,15 +697,12 @@ bool readSht45()
 
 void scanSht45Bus()
 {
-  Serial.println("Scanning SHT45 I2C bus SDA=7 SCL=8");
-
-  sht45Wire.begin(SHT45_SDA, SHT45_SCL);
-  sht45Wire.setTimeOut(100);
+  Serial.println("Scanning shared I2C bus SDA=8 SCL=7");
 
   for (uint8_t address = 1; address < 127; address++)
   {
-    sht45Wire.beginTransmission(address);
-    uint8_t error = sht45Wire.endTransmission();
+    Wire.beginTransmission(address);
+    uint8_t error = Wire.endTransmission();
 
     if (error == 0)
     {
@@ -637,7 +719,7 @@ void scanSht45Bus()
     delay(2);
   }
 
-  Serial.println("SHT45 I2C scan complete.");
+  Serial.println("Shared I2C scan complete.");
 }
 
 void initLd2410Out()
@@ -653,7 +735,7 @@ void pollLd2410Out()
 
   motionDetected = digitalRead(LD2410_OUT_PIN) == HIGH;
 
-  if (motionDetected != lastMotionDetected || millis() - lastPrintMs > 3000)
+  if (motionDetected != lastMotionDetected || millis() - lastPrintMs > 10000)
   {
     lastMotionDetected = motionDetected;
     lastPrintMs = millis();
@@ -661,6 +743,133 @@ void pollLd2410Out()
     Serial.print("LD2410 presence OUT: ");
     Serial.println(motionDetected ? "yes" : "no");
   }
+}
+
+bool isValidScreenTouch(int x, int y)
+{
+  return x >= 0 &&
+         x < SCREEN_W &&
+         y >= 0 &&
+         y < SCREEN_H;
+}
+
+void changeSelectedMode(const String& newMode)
+{
+  if (selectedMode == newMode)
+  {
+    return;
+  }
+
+  selectedMode = newMode;
+
+  int startHeatW = bottomBarHeatW;
+  int targetHeatW = getTargetHeatWidth();
+
+  for (int step = 1; step <= MODE_ANIMATION_STEPS; step++)
+  {
+    float progress = (float)step / (float)MODE_ANIMATION_STEPS;
+    progress = progress * progress * (3.0 - 2.0 * progress);
+
+    bottomBarHeatW = startHeatW +
+      (int)((targetHeatW - startHeatW) * progress);
+
+    drawBottomBar();
+    gfx->flush();
+
+    delay(MODE_ANIMATION_DELAY_MS);
+  }
+
+  bottomBarHeatW = targetHeatW;
+
+  drawBottomBar();
+  gfx->flush();
+
+  publishUpstairsSensorReading();
+}
+
+void handleTouchPress(int x, int y)
+{
+  int barY = SAFE_Y + SAFE_H - BOTTOM_BAR_H;
+  int barBottom = SAFE_Y + SAFE_H - 1;
+
+  bool inBottomBar =
+    x >= SAFE_X &&
+    x < SAFE_X + SAFE_W &&
+    y >= barY &&
+    y <= barBottom;
+
+  if (!inBottomBar)
+  {
+    return;
+  }
+
+  int heatW = bottomBarHeatW;
+  int dividerX = SAFE_X + heatW;
+
+  if (x < dividerX)
+  {
+    Serial.println("Touch selected Heat");
+    changeSelectedMode("Heat");
+    return;
+  }
+
+  Serial.println("Touch selected Cool");
+  changeSelectedMode("Cool");
+}
+
+void pollTouch()
+{
+  if (!touchReady)
+  {
+    return;
+  }
+
+  static bool touchWasDown = false;
+
+  bsp_touch_read();
+
+  touch_data_t touchData;
+
+  bool hasTouch = bsp_touch_get_coordinates(&touchData);
+
+  if (!hasTouch)
+  {
+    touchWasDown = false;
+    return;
+  }
+
+  int rawX = touchData.coords[0].x;
+  int rawY = touchData.coords[0].y;
+
+  int x = rawY;
+  int y = 320 - rawX;
+
+  if (!isValidScreenTouch(x, y))
+  {
+    Serial.print("Ignored invalid touch X=");
+    Serial.print(x);
+    Serial.print(" Y=");
+    Serial.println(y);
+    return;
+  }
+
+  if (touchWasDown)
+  {
+    return;
+  }
+
+  touchWasDown = true;
+
+  // Serial.print("Touch raw X=");
+  // Serial.print(rawX);
+  // Serial.print(" Y=");
+  // Serial.print(rawY);
+  // Serial.print(" -> screen X=");
+  // Serial.print(x);
+  // Serial.print(" Y=");
+  // Serial.println(y);
+
+  handleTouchPress(x, y);
 }
 
 void setup()
@@ -671,6 +880,7 @@ void setup()
   initDisplay();
   initLd2410Out();
 
+  bottomBarHeatW = getTargetHeatWidth();
   drawThermostatScreen();
 
   scanSht45Bus();
@@ -688,21 +898,9 @@ void setup()
 
 void loop()
 {
-  // pollLd2410();
-  // pollLd2410Raw();
+  pollTouch();
+  mqttClient.loop();
   pollLd2410Out();
-
-  // while (ld2410Serial.available())
-  // {
-  //   uint8_t b = ld2410Serial.read();
-
-  //   Serial.print("LD2410 byte: 0x");
-  //   if (b < 16)
-  //   {
-  //     Serial.print("0");
-  //   }
-  //   Serial.println(b, HEX);
-  // }
 
   if (WiFi.status() != WL_CONNECTED)
   {
@@ -713,8 +911,6 @@ void loop()
   {
     connectMqtt();
   }
-
-  mqttClient.loop();
 
   unsigned long now = millis();
 

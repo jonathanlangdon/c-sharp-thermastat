@@ -132,6 +132,15 @@ HvacStatus latestStatus;
 unsigned long lastPublishMs = 0;
 const unsigned long publishIntervalMs = 30000;
 
+unsigned long lastWiFiAttemptMs = 0;
+unsigned long lastMqttAttemptMs = 0;
+
+const unsigned long wifiRetryIntervalMs = 10000;
+const unsigned long mqttRetryIntervalMs = 5000;
+
+bool wifiWasConnected = false;
+bool mqttWasConnected = false;
+
 
 void initTouch()
 {
@@ -456,21 +465,50 @@ void drawThermostatScreen()
   gfx->flush();
 }
 
-void connectWiFi()
+void startWiFiConnection()
 {
-  Serial.print("Connecting to Wi-Fi");
+  Serial.println("Starting Wi-Fi connection...");
 
+  WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
-  while (WiFi.status() != WL_CONNECTED)
+  lastWiFiAttemptMs = millis();
+}
+
+void handleWiFiConnection()
+{
+  if (WiFi.status() == WL_CONNECTED)
   {
-    delay(500);
-    Serial.print(".");
+    if (!wifiWasConnected)
+    {
+      wifiWasConnected = true;
+
+      Serial.print("Wi-Fi connected. IP: ");
+      Serial.println(WiFi.localIP());
+    }
+
+    return;
   }
 
-  Serial.println();
-  Serial.print("Wi-Fi connected. IP: ");
-  Serial.println(WiFi.localIP());
+  if (wifiWasConnected)
+  {
+    wifiWasConnected = false;
+    mqttWasConnected = false;
+
+    Serial.println("Wi-Fi disconnected.");
+  }
+
+  if (millis() - lastWiFiAttemptMs < wifiRetryIntervalMs)
+  {
+    return;
+  }
+
+  Serial.println("Retrying Wi-Fi connection...");
+
+  WiFi.disconnect(false);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  lastWiFiAttemptMs = millis();
 }
 
 void publishUpstairsSensorReading()
@@ -480,6 +518,11 @@ void publishUpstairsSensorReading()
   if (!hasReading)
   {
     Serial.println("Skipping upstairs sensor publish because SHT45 read failed.");
+    return;
+  }
+  if (!mqttClient.connected())
+  {
+    Serial.println("Skipping upstairs sensor publish because MQTT is not connected.");
     return;
   }
 
@@ -539,32 +582,60 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length)
   drawThermostatScreen();
 }
 
-void connectMqtt()
+void handleMqttConnection()
 {
-  while (!mqttClient.connected())
+  if (WiFi.status() != WL_CONNECTED)
   {
-    Serial.print("Connecting to MQTT...");
+    return;
+  }
 
-    String clientId = "waveshare-hvac-display-";
-    clientId += String((uint32_t)ESP.getEfuseMac(), HEX);
-
-    if (mqttClient.connect(clientId.c_str()))
+  if (mqttClient.connected())
+  {
+    if (!mqttWasConnected)
     {
-      Serial.println("connected");
-
-      mqttClient.subscribe(STATUS_TOPIC);
-
-      Serial.print("Subscribed to ");
-      Serial.println(STATUS_TOPIC);
+      mqttWasConnected = true;
+      Serial.println("MQTT connected.");
     }
-    else
-    {
-      Serial.print("failed, rc=");
-      Serial.print(mqttClient.state());
-      Serial.println(". Retrying in 5 seconds.");
 
-      delay(5000);
-    }
+    return;
+  }
+
+  if (mqttWasConnected)
+  {
+    mqttWasConnected = false;
+    Serial.println("MQTT disconnected.");
+  }
+
+  if (millis() - lastMqttAttemptMs < mqttRetryIntervalMs)
+  {
+    return;
+  }
+
+  lastMqttAttemptMs = millis();
+
+  Serial.print("Connecting to MQTT...");
+
+  String clientId = "waveshare-hvac-display-";
+  clientId += String((uint32_t)ESP.getEfuseMac(), HEX);
+
+  if (mqttClient.connect(clientId.c_str()))
+  {
+    mqttWasConnected = true;
+
+    Serial.println("connected");
+
+    mqttClient.subscribe(STATUS_TOPIC);
+
+    Serial.print("Subscribed to ");
+    Serial.println(STATUS_TOPIC);
+
+    mqttClient.publish("hvac/upstairs/boot", "waveshare booted", true);
+  }
+  else
+  {
+    Serial.print("failed, rc=");
+    Serial.print(mqttClient.state());
+    Serial.println(". Will retry later.");
   }
 }
 
@@ -901,30 +972,26 @@ void setup()
   initSht45();
   readSht45();
 
-  connectWiFi();
-
   mqttClient.setBufferSize(2048);
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
   mqttClient.setCallback(onMqttMessage);
 
-  connectMqtt();
+  startWiFiConnection();
 }
 
 void loop()
 {
   pollTouch();
-  mqttClient.loop();
+
+  if (mqttClient.connected())
+  {
+    mqttClient.loop();
+  }
+
   pollLd2410Out();
 
-  if (WiFi.status() != WL_CONNECTED)
-  {
-    connectWiFi();
-  }
-
-  if (!mqttClient.connected())
-  {
-    connectMqtt();
-  }
+  handleWiFiConnection();
+  handleMqttConnection();
 
   unsigned long now = millis();
 

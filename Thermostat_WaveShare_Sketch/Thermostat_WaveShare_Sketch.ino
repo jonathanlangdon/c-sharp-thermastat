@@ -118,6 +118,8 @@ struct HvacStatus
   String reason = "Waiting";
   String mode = "Heat";
 
+  double heatSetPointFahr = NAN;
+
   double upstairsTemperature = NAN;
   double upstairsAbsoluteHumidity = NAN;
   double downstairsAbsoluteHumidity = NAN;
@@ -201,6 +203,16 @@ void printAtString(int x, int y, const String& text)
 {
   gfx->setCursor(x, y);
   gfx->print(text);
+}
+
+String formatSetPoint(double value)
+{
+  if (isnan(value))
+  {
+    return "--";
+  }
+
+  return String((int)round(value));
 }
 
 String formatOneDecimal(double value)
@@ -363,11 +375,11 @@ void drawBottomBar()
   int heatX = SAFE_X;
   int coolX = SAFE_X + heatW;
 
-  const char* heatLabel = heatW > 150
-    ? "Heating to 70"
+  String heatLabel = heatW > 150
+    ? "Heating to " + formatSetPoint(latestStatus.heatSetPointFahr)
     : "Heat";
 
-  const char* coolLabel = coolW > 150
+  String coolLabel = coolW > 150
     ? "Cooling"
     : "Cool";
 
@@ -387,7 +399,7 @@ void drawBottomBar()
     barY,
     heatW,
     barH,
-    heatLabel,
+    heatLabel.c_str(),
     HVAC_TEXT);
 
   drawCenteredTextInBox(
@@ -395,7 +407,7 @@ void drawBottomBar()
     barY,
     coolW,
     barH,
-    coolLabel,
+    coolLabel.c_str(),
     HVAC_TEXT);
 }
 
@@ -514,6 +526,8 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length)
 
   latestStatus.reason = doc["reason"] | "";
   latestStatus.mode = doc["mode"] | "";
+
+  latestStatus.heatSetPointFahr = doc["heatSetPointFahr"] | NAN;
 
   latestStatus.upstairsTemperature = doc["upstairsTemperature"] | NAN;
   latestStatus.upstairsAbsoluteHumidity = doc["upstairsAbsoluteHumidity"] | NAN;

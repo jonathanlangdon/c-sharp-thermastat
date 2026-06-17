@@ -24,6 +24,7 @@ public static class ThermostatStatusMessageBuilder
             Reason = output.Reason,
 
             Mode = input.Mode,
+            HeatSetPointFahr = output.HeatSetPointFahr,
 
             UpstairsTemperature = input.CurrentTempFahrUp,
             UpstairsRelativeHumidity = input.HumidityUpstairs,

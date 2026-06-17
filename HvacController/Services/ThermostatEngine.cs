@@ -35,9 +35,10 @@ public sealed class ThermostatEngine
 
         var temp = input.CurrentTempFahrUp.Value;
         var absoluteHumidity = input.ControlAbsoluteHumidity.Value;
+        var heatSetPoint = GetHeatSetPoint(input);
 
         var heat = input.Mode == HvacMode.Heat
-            && ShouldHeat(input, previousState, temp);
+            && ShouldHeat(input, previousState, temp, heatSetPoint);
 
         var cool = input.Mode == HvacMode.Cool
             && OutsideHumidityAllowsCooling(input)
@@ -58,6 +59,7 @@ public sealed class ThermostatEngine
             Heat = heat,
             Cool = cool,
             Fan = fan,
+            HeatSetPointFahr = heatSetPoint,
             Reason = "Everything Normal"
         });
     }
@@ -89,7 +91,8 @@ public sealed class ThermostatEngine
     private bool ShouldHeat(
         ThermostatInput input,
         ThermostatRuntimeState state,
-        double temp)
+        double temp,
+        double heatSetPoint)
     {
         if (state.WasHeating)
         {
@@ -102,7 +105,7 @@ public sealed class ThermostatEngine
                 return true;
             }
 
-            return temp < GetHeatSetPoint(input);
+            return temp < heatSetPoint;
         }
 
         var minOffSatisfied =
@@ -110,7 +113,7 @@ public sealed class ThermostatEngine
             input.Now - state.LastHeatStopped >= _settings.MinimumOffTime;
 
         return minOffSatisfied &&
-               temp <= GetHeatSetPoint(input) - _settings.TemperatureDifferentialF;
+               temp <= heatSetPoint - _settings.TemperatureDifferentialF;
     }
 
     private bool OutsideHumidityAllowsCooling(ThermostatInput input)

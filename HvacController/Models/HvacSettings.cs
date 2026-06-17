@@ -12,8 +12,8 @@ public sealed record HvacSettings
 
     public double OutdoorCoolingLockoutAbsoluteHumidityThreshold { get; init; } = 9.0;
 
-    public double AbsoluteHumidityCoolingOnThreshold { get; init; } = 9.5;
-    public double AbsoluteHumidityCoolingOffThreshold { get; init; } = 9.0;
+    public double AbsoluteHumidityCoolingOnThreshold { get; init; } = 10.0;
+    public double AbsoluteHumidityCoolingOffThreshold { get; init; } = 9.5;
 
     public TimeSpan MinimumRunTime { get; init; } = TimeSpan.FromMinutes(5);
     public TimeSpan MinimumOffTime { get; init; } = TimeSpan.FromMinutes(5);

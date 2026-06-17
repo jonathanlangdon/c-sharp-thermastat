@@ -171,6 +171,10 @@ mosquitto_pub -h localhost -t hvac/upstairs/sensor -m '{
 }'
 
 
+### View Live MQTT messages (from pi and upstairs)
+mosquitto_sub -h localhost -t hvac/status -C 1 -v
+mosquitto_sub -h localhost -t hvac/upstairs/sensor -v
+
 
 ## Outside Weather Source
 

@@ -212,7 +212,7 @@ String formatSetPoint(double value)
     return "--";
   }
 
-  return String((int)round(value));
+  return String((int)floor(value));
 }
 
 String formatOneDecimal(double value)

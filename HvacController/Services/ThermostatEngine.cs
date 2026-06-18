@@ -22,7 +22,7 @@ public sealed class ThermostatEngine
             return SafeOff(previousState, input.Now, "No temperature reading");
         }
 
-        if (input.ControlAbsoluteHumidity is null)
+        if (input.ControlHumidity is null)
         {
             return SafeOff(previousState, input.Now, "No humidity reading");
         }
@@ -34,14 +34,27 @@ public sealed class ThermostatEngine
         }
 
         var temp = input.CurrentTempFahrUp.Value;
-        var absoluteHumidity = input.ControlAbsoluteHumidity.Value;
+        var absoluteHumidity = input.ControlHumidity.Value;
         var heatSetPoint = GetHeatSetPoint(input);
+
+        if (input.Mode == HvacMode.Cool &&
+            input.OutsideAbsoluteHumidity is null)
+        {
+            return Transition(previousState, input.Now, new ThermostatOutput
+            {
+                Heat = false,
+                Cool = false,
+                Fan = true,
+                HeatSetPointFahr = heatSetPoint,
+                Reason = "Outdoor humidity is unavailable"
+            });
+        }
 
         var heat = input.Mode == HvacMode.Heat
             && ShouldHeat(input, previousState, temp, heatSetPoint);
 
         var cool = input.Mode == HvacMode.Cool
-            && OutsideHumidityAllowsCooling(input)
+            && MoreHumidOutside(input, absoluteHumidity)
             && ShouldCool(input, previousState, absoluteHumidity);
 
         var fan = true;
@@ -116,11 +129,12 @@ public sealed class ThermostatEngine
                temp <= heatSetPoint - _settings.TemperatureDifferentialF;
     }
 
-    private bool OutsideHumidityAllowsCooling(ThermostatInput input)
+    private static bool MoreHumidOutside(
+        ThermostatInput input,
+        double absoluteHumidity)
     {
-        return input.OutsideAbsoluteHumidity is null ||
-            input.OutsideAbsoluteHumidity >=
-            _settings.OutdoorCoolingLockoutAbsoluteHumidityThreshold;
+        return input.OutsideAbsoluteHumidity is not null &&
+            input.OutsideAbsoluteHumidity > absoluteHumidity;
     }
 
     private bool ShouldCool(

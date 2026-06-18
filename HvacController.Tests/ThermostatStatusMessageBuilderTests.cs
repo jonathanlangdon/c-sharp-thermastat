@@ -108,7 +108,7 @@ public sealed class ThermostatStatusMessageBuilderTests
             output,
             ThermostatRuntimeState.Empty);
 
-        Assert.Equal(input.ControlAbsoluteHumidity, message.ControlAbsoluteHumidity);
+        Assert.Equal(input.ControlHumidity, message.ControlAbsoluteHumidity);
     }
 
     [Fact]

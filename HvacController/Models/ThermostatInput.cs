@@ -26,7 +26,7 @@ public sealed record ThermostatInput
                 CurrentTempFahrDown.Value,
                 HumidityDownstairs.Value);
 
-    public double? ControlAbsoluteHumidity
+    public double? ControlHumidity
     {
         get
         {

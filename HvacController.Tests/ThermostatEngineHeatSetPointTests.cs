@@ -28,7 +28,7 @@ public sealed class ThermostatEngineHeatSetPointTests
             input,
             ThermostatRuntimeState.Empty);
 
-        Assert.Equal(70.6, output.HeatSetPointFahr!.Value, 1);
+        Assert.Equal(70.5, output.HeatSetPointFahr!.Value, 1);
     }
 
     [Fact]

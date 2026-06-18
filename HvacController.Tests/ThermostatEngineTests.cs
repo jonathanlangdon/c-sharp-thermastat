@@ -45,6 +45,7 @@ public sealed class ThermostatEngineTests
         {
             CurrentTempFahrUp = 72,
             HumidityUpstairs = 50,
+            OutsideAbsoluteHumidity = 15.0,
             Mode = HvacMode.Cool,
             Now = now,
             LastSensorUpdate = now
@@ -79,6 +80,7 @@ public sealed class ThermostatEngineTests
             CurrentTempFahrUp = 72,
             HumidityUpstairs = 46,
             Mode = HvacMode.Cool,
+            OutsideAbsoluteHumidity = 15.0,
             Now = now,
             LastSensorUpdate = now
         };
@@ -223,6 +225,7 @@ public sealed class ThermostatEngineTests
             CurrentTempFahrUp = 71,
             HumidityUpstairs = 48,
             Mode = HvacMode.Cool,
+            OutsideAbsoluteHumidity = 15.0,
             Now = now,
             LastSensorUpdate = now
         };
@@ -566,6 +569,7 @@ public sealed class ThermostatEngineTests
             CurrentTempFahrDown = 65,
             HumidityDownstairs = 40,    // AH below threshold
             Mode = HvacMode.Cool,
+            OutsideAbsoluteHumidity = 15.0,
             Now = now,
             LastSensorUpdate = now,
             LastMotionDetected = now
@@ -595,6 +599,7 @@ public sealed class ThermostatEngineTests
             CurrentTempFahrDown = 72,
             HumidityDownstairs = 50,    // AH about 9.83
             Mode = HvacMode.Cool,
+            OutsideAbsoluteHumidity = 15.0,
             Now = now,
             LastSensorUpdate = now,
             LastMotionDetected = now
@@ -666,7 +671,7 @@ public sealed class ThermostatEngineTests
     }
 
     [Fact]
-    public void CoolMode_WhenInsideHumidityIsHighAndOutsideAbsoluteHumidityIsAtLockoutThreshold_TurnsOnCooling()
+    public void CoolMode_WhenOutsideIsLessHumid_TurnsOffCooling()
     {
         var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
         var engine = new ThermostatEngine(new HvacSettings
@@ -690,7 +695,7 @@ public sealed class ThermostatEngineTests
         var (output, _) = engine.Evaluate(input, ThermostatRuntimeState.Empty);
 
         Assert.False(output.Heat);
-        Assert.True(output.Cool);
+        Assert.False(output.Cool);
         Assert.True(output.Fan);
     }
 

@@ -2,9 +2,9 @@ namespace HvacController.Models;
 
 public sealed record HvacSettings
 {
-    public double TemperatureDifferentialF { get; init; } = 0.6;
+    public double TemperatureDifferentialF { get; init; } = 0.5;
 
-    public double DayHeatSetPoint { get; init; } = 70.6;
+    public double DayHeatSetPoint { get; init; } = 70.5;
     public double NightHeatSetPoint { get; init; } = 65.0;
 
     public TimeOnly NightHeatStart { get; init; } = new(19, 0);

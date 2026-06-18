@@ -21,7 +21,7 @@ public sealed class ThermostatCycleRunnerTests
         outsideState.Update(new OutsideWeatherReading
         {
             OutsideTemperature = 70,
-            OutsideAbsoluteHumidity = 9.5,
+            OutsideAbsoluteHumidity = 12.5,
             UpdatedAt = now
         });
 

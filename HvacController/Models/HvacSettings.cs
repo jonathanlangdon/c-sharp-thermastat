@@ -10,10 +10,10 @@ public sealed record HvacSettings
     public TimeOnly NightHeatStart { get; init; } = new(19, 0);
     public TimeOnly NightHeatEnd { get; init; } = new(6, 0);
 
-    public double OutdoorCoolingLockoutAbsoluteHumidityThreshold { get; init; } = 9.0;
+    public double OutdoorCoolingLockoutAbsoluteHumidityThreshold { get; init; } = 9.5;
 
-    public double AbsoluteHumidityCoolingOnThreshold { get; init; } = 10.0;
-    public double AbsoluteHumidityCoolingOffThreshold { get; init; } = 9.5;
+    public double AbsoluteHumidityCoolingOnThreshold { get; init; } = 11.0;
+    public double AbsoluteHumidityCoolingOffThreshold { get; init; } = 10.5;
 
     public TimeSpan MinimumRunTime { get; init; } = TimeSpan.FromMinutes(5);
     public TimeSpan MinimumOffTime { get; init; } = TimeSpan.FromMinutes(5);

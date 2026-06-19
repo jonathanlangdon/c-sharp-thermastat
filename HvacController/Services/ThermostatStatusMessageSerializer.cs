@@ -11,7 +11,8 @@ public static class ThermostatStatusMessageSerializer
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         Converters =
         {
-            new JsonStringEnumConverter()
+            new JsonStringEnumConverter(),
+            new EasternDateTimeOffsetJsonConverter()
         }
     };
 

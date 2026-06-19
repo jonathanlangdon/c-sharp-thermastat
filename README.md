@@ -205,3 +205,15 @@ builder.Services.AddSingleton<IRelayService>(_ => new RelayService(activeHigh: f
 
 Only enable live relay mode when running on the Raspberry Pi with the relay board connected.
 
+## Arduino Settings for Waveshare
+*** => had to change default
+Board: ESP32S3 Dev Module ***
+USB CDC On Boot: Enabled ***
+USB Mode: Hardware CDC and JTAG
+Upload Mode: UART0 / Hardware CDC
+Flash Size: 16MB ***
+Partition Scheme: 3MB APP / 9MB FATFS ***
+PSRAM: OPI PSRAM ***
+Flash Mode: QIO 80MHz
+CPU Frequency: 240MHz
+Upload Speed: 460800 ***

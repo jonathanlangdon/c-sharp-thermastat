@@ -13,12 +13,12 @@
 #include <Fonts/FreeSansBold18pt7b.h>
 #include <Fonts/FreeSansBold24pt7b.h>
 
-#define LCD_QSPI_CS   12
-#define LCD_QSPI_CLK  5
-#define LCD_QSPI_D0   1
-#define LCD_QSPI_D1   2
-#define LCD_QSPI_D2   3
-#define LCD_QSPI_D3   4
+#define LCD_QSPI_CS 12
+#define LCD_QSPI_CLK 5
+#define LCD_QSPI_D0 1
+#define LCD_QSPI_D1 2
+#define LCD_QSPI_D2 3
+#define LCD_QSPI_D3 4
 
 #define ROTATION 1
 #define GFX_BL 6
@@ -26,8 +26,8 @@
 #define I2C_SDA 8
 #define I2C_SCL 7
 
-#define SHT45_SDA I2C_SDA
-#define SHT45_SCL I2C_SCL
+#define SHT45_SDA 17 // blue wire port 16 on rail
+#define SHT45_SCL 9 // yellow wire port 14 on rail
 
 #define SCREEN_W 480
 #define SCREEN_H 320
@@ -58,6 +58,8 @@ bool motionDetected = false;
 
 Adafruit_SHT4x sht45 = Adafruit_SHT4x();
 
+TwoWire sht45Wire = TwoWire(1);
+
 bool sht45Ready = false;
 double upstairsTemperatureF = NAN;
 double upstairsRelativeHumidity = NAN;
@@ -72,45 +74,41 @@ const char* STATUS_TOPIC = "hvac/status";
 
 TCA9554 TCA(0x20);
 
-Arduino_DataBus *bus = new Arduino_ESP32QSPI(
+Arduino_DataBus* bus = new Arduino_ESP32QSPI(
   LCD_QSPI_CS,
   LCD_QSPI_CLK,
   LCD_QSPI_D0,
   LCD_QSPI_D1,
   LCD_QSPI_D2,
-  LCD_QSPI_D3
-);
+  LCD_QSPI_D3);
 
-Arduino_GFX *g = new Arduino_AXS15231B(
+Arduino_GFX* g = new Arduino_AXS15231B(
   bus,
   -1,
   0,
   false,
   320,
-  480
-);
+  480);
 
-Arduino_Canvas *gfx = new Arduino_Canvas(
+Arduino_Canvas* gfx = new Arduino_Canvas(
   320,
   480,
   g,
   0,
   0,
-  ROTATION
-);
+  ROTATION);
 
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
 
 
-#define HVAC_BG         RGB565_BLACK
-#define HVAC_TEXT       RGB565_WHITE
-#define HVAC_LINE       0x7BEF
-#define HVAC_HEAT_FILL  0xF800
-#define HVAC_COOL_FILL  0x001F
+#define HVAC_BG RGB565_BLACK
+#define HVAC_TEXT RGB565_WHITE
+#define HVAC_LINE 0x7BEF
+#define HVAC_HEAT_FILL 0xF800
+#define HVAC_COOL_FILL 0x001F
 
-struct HvacStatus
-{
+struct HvacStatus {
   bool heat = false;
   bool cool = false;
   bool fan = false;
@@ -142,8 +140,7 @@ bool wifiWasConnected = false;
 bool mqttWasConnected = false;
 
 
-void initTouch()
-{
+void initTouch() {
   Serial.println("Initializing AXS15231B touch...");
 
   bsp_touch_init(&Wire, -1, 0, 320, 480);
@@ -154,8 +151,7 @@ void initTouch()
 }
 
 
-void initDisplay()
-{
+void initDisplay() {
   Wire.begin(I2C_SDA, I2C_SCL);
   Wire.setTimeOut(100);
 
@@ -171,8 +167,7 @@ void initDisplay()
 
   initTouch();
 
-  if (!gfx->begin())
-  {
+  if (!gfx->begin()) {
     Serial.println("gfx->begin() failed!");
   }
 
@@ -181,53 +176,44 @@ void initDisplay()
 }
 
 
-void setFontSmall(uint16_t color)
-{
+void setFontSmall(uint16_t color) {
   gfx->setFont(&FreeSans9pt7b);
   gfx->setTextSize(1);
   gfx->setTextColor(color);
 }
 
-void setFontMedium(uint16_t color)
-{
+void setFontMedium(uint16_t color) {
   gfx->setFont(&FreeSans12pt7b);
   gfx->setTextSize(1);
   gfx->setTextColor(color);
 }
 
-void setFontHeading(uint16_t color)
-{
+void setFontHeading(uint16_t color) {
   gfx->setFont(&FreeSansBold18pt7b);
   gfx->setTextSize(1);
   gfx->setTextColor(color);
 }
 
-void printAt(int x, int y, const char* text)
-{
+void printAt(int x, int y, const char* text) {
   gfx->setCursor(x, y);
   gfx->print(text);
 }
 
-void printAtString(int x, int y, const String& text)
-{
+void printAtString(int x, int y, const String& text) {
   gfx->setCursor(x, y);
   gfx->print(text);
 }
 
-String formatSetPoint(double value)
-{
-  if (isnan(value))
-  {
+String formatSetPoint(double value) {
+  if (isnan(value)) {
     return "--";
   }
 
   return String((int)floor(value));
 }
 
-String formatOneDecimal(double value)
-{
-  if (isnan(value))
-  {
+String formatOneDecimal(double value) {
+  if (isnan(value)) {
     return "--";
   }
 
@@ -241,8 +227,7 @@ void getBounds(
   int16_t* x1,
   int16_t* y1,
   uint16_t* w,
-  uint16_t* h)
-{
+  uint16_t* h) {
   gfx->setFont(font);
   gfx->setTextSize(size);
   gfx->getTextBounds(text, 0, 0, x1, y1, w, h);
@@ -254,8 +239,7 @@ void drawCenteredTextInBox(
   int boxW,
   int boxH,
   const char* text,
-  uint16_t color)
-{
+  uint16_t color) {
   int16_t x1;
   int16_t y1;
   uint16_t textW;
@@ -271,8 +255,7 @@ void drawCenteredTextInBox(
   gfx->print(text);
 }
 
-void drawTopBar()
-{
+void drawTopBar() {
   setFontMedium(HVAC_TEXT);
 
   String outside = "Outside: ";
@@ -281,8 +264,7 @@ void drawTopBar()
   printAtString(SAFE_X, SAFE_Y + 20, outside);
 }
 
-void drawLargeTemperature()
-{
+void drawLargeTemperature() {
   const int areaX = SAFE_X;
   const int areaY = SAFE_Y + 40;
   const int areaW = 245;
@@ -295,13 +277,10 @@ void drawLargeTemperature()
 
   int dotIndex = temp.indexOf('.');
 
-  if (dotIndex >= 0)
-  {
+  if (dotIndex >= 0) {
     wholePart = temp.substring(0, dotIndex);
     decimalPart = temp.substring(dotIndex);
-  }
-  else
-  {
+  } else {
     wholePart = temp;
   }
 
@@ -339,8 +318,7 @@ void drawLargeTemperature()
   gfx->print(decimalPart);
 }
 
-void drawHumidityPanel()
-{
+void drawHumidityPanel() {
   int x = SAFE_X + 268;
   int y = SAFE_Y + 48;
 
@@ -362,18 +340,15 @@ void drawHumidityPanel()
   printAtString(x, y + 90, down);
 }
 
-int getTargetHeatWidth()
-{
-  if (selectedMode == "Cool")
-  {
+int getTargetHeatWidth() {
+  if (selectedMode == "Cool") {
     return MODE_SMALL_W;
   }
 
   return SAFE_W - MODE_SMALL_W;
 }
 
-void drawBottomBar()
-{
+void drawBottomBar() {
   int barY = SAFE_Y + SAFE_H - BOTTOM_BAR_H;
   int barBottom = SAFE_Y + SAFE_H - 1;
   int barH = barBottom - barY + 1;
@@ -385,12 +360,12 @@ void drawBottomBar()
   int coolX = SAFE_X + heatW;
 
   String heatLabel = heatW > 150
-    ? "Heating to " + formatSetPoint(latestStatus.heatSetPointFahr)
-    : "Heat";
+                       ? "Heating to " + formatSetPoint(latestStatus.heatSetPointFahr)
+                       : "Heat";
 
   String coolLabel = coolW > 150
-    ? "Cooling"
-    : "Cool";
+                       ? "Cooling"
+                       : "Cool";
 
   gfx->fillRect(SAFE_X, barY, SAFE_W, barH, HVAC_BG);
 
@@ -420,27 +395,23 @@ void drawBottomBar()
     HVAC_TEXT);
 }
 
-void animateBottomBarToSelectedMode()
-{
+void animateBottomBarToSelectedMode() {
   int startHeatW = bottomBarHeatW;
   int targetHeatW = getTargetHeatWidth();
 
-  if (startHeatW == targetHeatW)
-  {
+  if (startHeatW == targetHeatW) {
     drawBottomBar();
     gfx->flush();
     return;
   }
 
-  for (int step = 1; step <= MODE_ANIMATION_STEPS; step++)
-  {
+  for (int step = 1; step <= MODE_ANIMATION_STEPS; step++) {
     float progress = (float)step / (float)MODE_ANIMATION_STEPS;
 
     // Smoothstep easing: starts and ends softer than a straight linear slide.
     progress = progress * progress * (3.0 - 2.0 * progress);
 
-    bottomBarHeatW = startHeatW +
-      (int)((targetHeatW - startHeatW) * progress);
+    bottomBarHeatW = startHeatW + (int)((targetHeatW - startHeatW) * progress);
 
     drawBottomBar();
     gfx->flush();
@@ -453,8 +424,7 @@ void animateBottomBarToSelectedMode()
   gfx->flush();
 }
 
-void drawThermostatScreen()
-{
+void drawThermostatScreen() {
   gfx->fillScreen(HVAC_BG);
 
   drawTopBar();
@@ -465,8 +435,7 @@ void drawThermostatScreen()
   gfx->flush();
 }
 
-void startWiFiConnection()
-{
+void startWiFiConnection() {
   Serial.println("Starting Wi-Fi connection...");
 
   WiFi.mode(WIFI_STA);
@@ -475,12 +444,9 @@ void startWiFiConnection()
   lastWiFiAttemptMs = millis();
 }
 
-void handleWiFiConnection()
-{
-  if (WiFi.status() == WL_CONNECTED)
-  {
-    if (!wifiWasConnected)
-    {
+void handleWiFiConnection() {
+  if (WiFi.status() == WL_CONNECTED) {
+    if (!wifiWasConnected) {
       wifiWasConnected = true;
 
       Serial.print("Wi-Fi connected. IP: ");
@@ -490,16 +456,14 @@ void handleWiFiConnection()
     return;
   }
 
-  if (wifiWasConnected)
-  {
+  if (wifiWasConnected) {
     wifiWasConnected = false;
     mqttWasConnected = false;
 
     Serial.println("Wi-Fi disconnected.");
   }
 
-  if (millis() - lastWiFiAttemptMs < wifiRetryIntervalMs)
-  {
+  if (millis() - lastWiFiAttemptMs < wifiRetryIntervalMs) {
     return;
   }
 
@@ -511,17 +475,14 @@ void handleWiFiConnection()
   lastWiFiAttemptMs = millis();
 }
 
-void publishUpstairsSensorReading()
-{
+void publishUpstairsSensorReading() {
   bool hasReading = readSht45();
 
-  if (!hasReading)
-  {
+  if (!hasReading) {
     Serial.println("Skipping upstairs sensor publish because SHT45 read failed.");
     return;
   }
-  if (!mqttClient.connected())
-  {
+  if (!mqttClient.connected()) {
     Serial.println("Skipping upstairs sensor publish because MQTT is not connected.");
     return;
   }
@@ -539,16 +500,14 @@ void publishUpstairsSensorReading()
   bool published = mqttClient.publish(
     SENSOR_TOPIC,
     buffer,
-    length
-  );
+    length);
 
   Serial.print("Published upstairs sensor message: ");
   Serial.println(published ? "yes" : "no");
   Serial.println(buffer);
 }
 
-void onMqttMessage(char* topic, byte* payload, unsigned int length)
-{
+void onMqttMessage(char* topic, byte* payload, unsigned int length) {
   Serial.print("MQTT message on topic: ");
   Serial.println(topic);
 
@@ -556,8 +515,7 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length)
 
   DeserializationError error = deserializeJson(doc, payload, length);
 
-  if (error)
-  {
+  if (error) {
     Serial.print("Failed to parse status JSON: ");
     Serial.println(error.c_str());
     return;
@@ -582,17 +540,13 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length)
   drawThermostatScreen();
 }
 
-void handleMqttConnection()
-{
-  if (WiFi.status() != WL_CONNECTED)
-  {
+void handleMqttConnection() {
+  if (WiFi.status() != WL_CONNECTED) {
     return;
   }
 
-  if (mqttClient.connected())
-  {
-    if (!mqttWasConnected)
-    {
+  if (mqttClient.connected()) {
+    if (!mqttWasConnected) {
       mqttWasConnected = true;
       Serial.println("MQTT connected.");
     }
@@ -600,14 +554,12 @@ void handleMqttConnection()
     return;
   }
 
-  if (mqttWasConnected)
-  {
+  if (mqttWasConnected) {
     mqttWasConnected = false;
     Serial.println("MQTT disconnected.");
   }
 
-  if (millis() - lastMqttAttemptMs < mqttRetryIntervalMs)
-  {
+  if (millis() - lastMqttAttemptMs < mqttRetryIntervalMs) {
     return;
   }
 
@@ -618,8 +570,7 @@ void handleMqttConnection()
   String clientId = "waveshare-hvac-display-";
   clientId += String((uint32_t)ESP.getEfuseMac(), HEX);
 
-  if (mqttClient.connect(clientId.c_str()))
-  {
+  if (mqttClient.connect(clientId.c_str())) {
     mqttWasConnected = true;
 
     Serial.println("connected");
@@ -630,30 +581,24 @@ void handleMqttConnection()
     Serial.println(STATUS_TOPIC);
 
     mqttClient.publish("hvac/upstairs/boot", "waveshare booted", true);
-  }
-  else
-  {
+  } else {
     Serial.print("failed, rc=");
     Serial.print(mqttClient.state());
     Serial.println(". Will retry later.");
   }
 }
 
-void scanMainI2CBus()
-{
+void scanMainI2CBus() {
   Serial.println("Scanning main I2C bus SDA=21 SCL=22");
 
-  for (uint8_t address = 1; address < 127; address++)
-  {
+  for (uint8_t address = 1; address < 127; address++) {
     Wire.beginTransmission(address);
     uint8_t error = Wire.endTransmission();
 
-    if (error == 0)
-    {
+    if (error == 0) {
       Serial.print("Found I2C device at 0x");
 
-      if (address < 16)
-      {
+      if (address < 16) {
         Serial.print("0");
       }
 
@@ -666,8 +611,7 @@ void scanMainI2CBus()
   Serial.println("I2C scan complete.");
 }
 
-void scanI2CBus(TwoWire& bus, int sda, int scl, const char* name)
-{
+void scanI2CBus(TwoWire& bus, int sda, int scl, const char* name) {
   Serial.print("Scanning ");
   Serial.print(name);
   Serial.print(" SDA=");
@@ -680,18 +624,15 @@ void scanI2CBus(TwoWire& bus, int sda, int scl, const char* name)
 
   bool foundAny = false;
 
-  for (uint8_t address = 1; address < 127; address++)
-  {
+  for (uint8_t address = 1; address < 127; address++) {
     bus.beginTransmission(address);
     uint8_t error = bus.endTransmission();
 
-    if (error == 0)
-    {
+    if (error == 0) {
       foundAny = true;
       Serial.print("Found I2C device at 0x");
 
-      if (address < 16)
-      {
+      if (address < 16) {
         Serial.print("0");
       }
 
@@ -699,47 +640,45 @@ void scanI2CBus(TwoWire& bus, int sda, int scl, const char* name)
     }
   }
 
-  if (!foundAny)
-  {
+  if (!foundAny) {
     Serial.println("No I2C devices found.");
   }
 
   Serial.println();
 }
 
-bool i2cAddressResponds(uint8_t address)
-{
+bool i2cAddressResponds(uint8_t address) {
   Wire.beginTransmission(address);
   uint8_t error = Wire.endTransmission();
 
   return error == 0;
 }
 
-bool sht45AddressResponds(uint8_t address)
-{
-  Wire.beginTransmission(address);
-  uint8_t error = Wire.endTransmission();
+bool sht45AddressResponds(uint8_t address) {
+  sht45Wire.beginTransmission(address);
+  uint8_t error = sht45Wire.endTransmission();
 
   return error == 0;
 }
 
-void initSht45()
-{
-  Serial.println("Initializing upstairs SHT45 on shared I2C bus GPIO8/GPIO7...");
+void initSht45() {
+  Serial.println("Initializing upstairs SHT45 on separate I2C bus GPIO21/GPIO38...");
+
+  sht45Wire.begin(SHT45_SDA, SHT45_SCL);
+  sht45Wire.setTimeOut(100);
+  delay(100);
 
   const uint8_t SHT45_ADDRESS = 0x44;
 
-  if (!sht45AddressResponds(SHT45_ADDRESS))
-  {
-    Serial.println("No SHT45 response at I2C address 0x44 on GPIO7/GPIO8.");
+  if (!sht45AddressResponds(SHT45_ADDRESS)) {
+    Serial.println("No SHT45 response at I2C address 0x44 on GPIO21/GPIO38.");
     sht45Ready = false;
     return;
   }
 
   Serial.println("SHT45 address responded. Starting library...");
 
-  if (!sht45.begin(&Wire))
-  {
+  if (!sht45.begin(&sht45Wire)) {
     Serial.println("Could not start SHT45 library.");
     sht45Ready = false;
     return;
@@ -752,23 +691,20 @@ void initSht45()
   Serial.println("SHT45 initialized.");
 }
 
-bool readSht45()
-{
-  if (!sht45Ready)
-  {
+bool readSht45() {
+  if (!sht45Ready) {
     return false;
   }
 
   sensors_event_t humidity;
   sensors_event_t temperature;
 
-  if (!sht45.getEvent(&humidity, &temperature))
-  {
+  if (!sht45.getEvent(&humidity, &temperature)) {
     Serial.println("Failed to read SHT45.");
     return false;
   }
 
-  upstairsTemperatureF = temperature.temperature * 9.0 / 5.0 + 32.0;
+  upstairsTemperatureF = temperature.temperature * 9.0 / 5.0 + 31.0;
   upstairsRelativeHumidity = humidity.relative_humidity;
 
   Serial.print("SHT45 temp F: ");
@@ -780,21 +716,21 @@ bool readSht45()
   return true;
 }
 
-void scanSht45Bus()
-{
-  Serial.println("Scanning shared I2C bus SDA=8 SCL=7");
+void scanSht45Bus() {
+  Serial.println("Scanning SHT45 I2C bus SDA=21 SCL=38");
 
-  for (uint8_t address = 1; address < 127; address++)
-  {
-    Wire.beginTransmission(address);
-    uint8_t error = Wire.endTransmission();
+  sht45Wire.begin(SHT45_SDA, SHT45_SCL);
+  sht45Wire.setTimeOut(100);
+  delay(100);
 
-    if (error == 0)
-    {
+  for (uint8_t address = 1; address < 127; address++) {
+    sht45Wire.beginTransmission(address);
+    uint8_t error = sht45Wire.endTransmission();
+
+    if (error == 0) {
       Serial.print("Found I2C device at 0x");
 
-      if (address < 16)
-      {
+      if (address < 16) {
         Serial.print("0");
       }
 
@@ -804,24 +740,21 @@ void scanSht45Bus()
     delay(2);
   }
 
-  Serial.println("Shared I2C scan complete.");
+  Serial.println("SHT45 I2C scan complete.");
 }
 
-void initLd2410Out()
-{
+void initLd2410Out() {
   pinMode(LD2410_OUT_PIN, INPUT);
   Serial.println("LD2410 OUT pin started.");
 }
 
-void pollLd2410Out()
-{
+void pollLd2410Out() {
   static bool lastMotionDetected = false;
   static unsigned long lastPrintMs = 0;
 
   motionDetected = digitalRead(LD2410_OUT_PIN) == HIGH;
 
-  if (motionDetected != lastMotionDetected || millis() - lastPrintMs > 10000)
-  {
+  if (motionDetected != lastMotionDetected || millis() - lastPrintMs > 10000) {
     lastMotionDetected = motionDetected;
     lastPrintMs = millis();
 
@@ -830,18 +763,12 @@ void pollLd2410Out()
   }
 }
 
-bool isValidScreenTouch(int x, int y)
-{
-  return x >= 0 &&
-         x < SCREEN_W &&
-         y >= 0 &&
-         y < SCREEN_H;
+bool isValidScreenTouch(int x, int y) {
+  return x >= 0 && x < SCREEN_W && y >= 0 && y < SCREEN_H;
 }
 
-void changeSelectedMode(const String& newMode)
-{
-  if (selectedMode == newMode)
-  {
+void changeSelectedMode(const String& newMode) {
+  if (selectedMode == newMode) {
     return;
   }
 
@@ -850,13 +777,11 @@ void changeSelectedMode(const String& newMode)
   int startHeatW = bottomBarHeatW;
   int targetHeatW = getTargetHeatWidth();
 
-  for (int step = 1; step <= MODE_ANIMATION_STEPS; step++)
-  {
+  for (int step = 1; step <= MODE_ANIMATION_STEPS; step++) {
     float progress = (float)step / (float)MODE_ANIMATION_STEPS;
     progress = progress * progress * (3.0 - 2.0 * progress);
 
-    bottomBarHeatW = startHeatW +
-      (int)((targetHeatW - startHeatW) * progress);
+    bottomBarHeatW = startHeatW + (int)((targetHeatW - startHeatW) * progress);
 
     drawBottomBar();
     gfx->flush();
@@ -872,27 +797,21 @@ void changeSelectedMode(const String& newMode)
   publishUpstairsSensorReading();
 }
 
-void handleTouchPress(int x, int y)
-{
+void handleTouchPress(int x, int y) {
   int barY = SAFE_Y + SAFE_H - BOTTOM_BAR_H;
   int barBottom = SAFE_Y + SAFE_H - 1;
 
   bool inBottomBar =
-    x >= SAFE_X &&
-    x < SAFE_X + SAFE_W &&
-    y >= barY &&
-    y <= barBottom;
+    x >= SAFE_X && x < SAFE_X + SAFE_W && y >= barY && y <= barBottom;
 
-  if (!inBottomBar)
-  {
+  if (!inBottomBar) {
     return;
   }
 
   int heatW = bottomBarHeatW;
   int dividerX = SAFE_X + heatW;
 
-  if (x < dividerX)
-  {
+  if (x < dividerX) {
     Serial.println("Touch selected Heat");
     changeSelectedMode("Heat");
     return;
@@ -902,10 +821,8 @@ void handleTouchPress(int x, int y)
   changeSelectedMode("Cool");
 }
 
-void pollTouch()
-{
-  if (!touchReady)
-  {
+void pollTouch() {
+  if (!touchReady) {
     return;
   }
 
@@ -917,8 +834,7 @@ void pollTouch()
 
   bool hasTouch = bsp_touch_get_coordinates(&touchData);
 
-  if (!hasTouch)
-  {
+  if (!hasTouch) {
     touchWasDown = false;
     return;
   }
@@ -929,8 +845,7 @@ void pollTouch()
   int x = rawY;
   int y = 320 - rawX;
 
-  if (!isValidScreenTouch(x, y))
-  {
+  if (!isValidScreenTouch(x, y)) {
     Serial.print("Ignored invalid touch X=");
     Serial.print(x);
     Serial.print(" Y=");
@@ -938,8 +853,7 @@ void pollTouch()
     return;
   }
 
-  if (touchWasDown)
-  {
+  if (touchWasDown) {
     return;
   }
 
@@ -957,8 +871,7 @@ void pollTouch()
   handleTouchPress(x, y);
 }
 
-void setup()
-{
+void setup() {
   Serial.begin(115200);
   delay(1000);
 
@@ -979,12 +892,10 @@ void setup()
   startWiFiConnection();
 }
 
-void loop()
-{
+void loop() {
   pollTouch();
 
-  if (mqttClient.connected())
-  {
+  if (mqttClient.connected()) {
     mqttClient.loop();
   }
 
@@ -995,8 +906,7 @@ void loop()
 
   unsigned long now = millis();
 
-  if (now - lastPublishMs >= publishIntervalMs)
-  {
+  if (now - lastPublishMs >= publishIntervalMs) {
     lastPublishMs = now;
     publishUpstairsSensorReading();
   }

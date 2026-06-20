@@ -78,7 +78,7 @@ public sealed class ThermostatEngineTests
         var input = new ThermostatInput
         {
             CurrentTempFahrUp = 72,
-            HumidityUpstairs = 46,
+            HumidityUpstairs = 56,
             Mode = HvacMode.Cool,
             OutsideAbsoluteHumidity = 15.0,
             Now = now,
@@ -649,7 +649,7 @@ public sealed class ThermostatEngineTests
         {
             AbsoluteHumidityCoolingOnThreshold = 9.5,
             AbsoluteHumidityCoolingOffThreshold = 9.0,
-            OutdoorCoolingLockoutAbsoluteHumidityThreshold = 9.0
+            OutdoorGoodHumidityHighestLevel = 9.0
         });
 
         var input = new ThermostatInput
@@ -678,7 +678,7 @@ public sealed class ThermostatEngineTests
         {
             AbsoluteHumidityCoolingOnThreshold = 9.5,
             AbsoluteHumidityCoolingOffThreshold = 9.0,
-            OutdoorCoolingLockoutAbsoluteHumidityThreshold = 9.0
+            OutdoorGoodHumidityHighestLevel = 9.0
         });
 
         var input = new ThermostatInput

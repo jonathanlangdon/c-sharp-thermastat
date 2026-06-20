@@ -10,7 +10,7 @@ public sealed record HvacSettings
     public TimeOnly NightHeatStart { get; init; } = new(19, 0);
     public TimeOnly NightHeatEnd { get; init; } = new(6, 0);
 
-    public double OutdoorCoolingLockoutAbsoluteHumidityThreshold { get; init; } = 9.5;
+    public double OutdoorGoodHumidityHighestLevel { get; init; } = 10.4;
 
     public double AbsoluteHumidityCoolingOnThreshold { get; init; } = 11.0;
     public double AbsoluteHumidityCoolingOffThreshold { get; init; } = 10.5;

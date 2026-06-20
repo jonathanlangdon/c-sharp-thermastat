@@ -4,6 +4,12 @@ namespace HvacController.Services;
 
 public sealed class ThermostatEngine
 {
+    private const string NormalReason = "Everything Normal";
+    private const string NoTemperatureReason = "No temperature reading";
+    private const string NoHumidityReason = "No humidity reading";
+    private const string SensorTimeoutReason = "Sensor timeout";
+    private const string OutdoorHumidityUnavailableReason = "Outdoor humidity is unavailable";
+
     private readonly HvacSettings _settings;
 
     public ThermostatEngine(HvacSettings settings)
@@ -19,86 +25,87 @@ public sealed class ThermostatEngine
     {
         if (input.CurrentTempFahrUp is null)
         {
-            return SafeOff(previousState, input.Now, "No temperature reading");
+            return SafeOff(previousState, input.Now, NoTemperatureReason);
         }
 
         if (input.ControlHumidity is null)
         {
-            return SafeOff(previousState, input.Now, "No humidity reading");
+            return SafeOff(previousState, input.Now, NoHumidityReason);
         }
 
         if (input.LastSensorUpdate is null ||
             input.Now - input.LastSensorUpdate > _settings.SensorTimeout)
         {
-            return SafeOff(previousState, input.Now, "Sensor timeout");
+            return SafeOff(previousState, input.Now, SensorTimeoutReason);
         }
 
         var temp = input.CurrentTempFahrUp.Value;
         var absoluteHumidity = input.ControlHumidity.Value;
         var heatSetPoint = GetHeatSetPoint(input);
 
-        if (input.Mode == HvacMode.Cool &&
-            input.OutsideAbsoluteHumidity is null)
+        return input.Mode switch
         {
-            return Transition(previousState, input.Now, new ThermostatOutput
-            {
-                Heat = false,
-                Cool = false,
-                Fan = true,
-                HeatSetPointFahr = heatSetPoint,
-                Reason = "Outdoor humidity is unavailable"
-            });
-        }
+            HvacMode.Heat => Transition(
+                previousState,
+                input.Now,
+                CreateOutput(
+                    heat: ShouldHeat(input, previousState, temp, heatSetPoint),
+                    cool: false,
+                    fan: true,
+                    heatSetPoint,
+                    NormalReason)),
 
-        var heat = input.Mode == HvacMode.Heat
-            && ShouldHeat(input, previousState, temp, heatSetPoint);
+            HvacMode.Cool when input.OutsideAbsoluteHumidity is null => Transition(
+                previousState,
+                input.Now,
+                CreateOutput(
+                    heat: false,
+                    cool: false,
+                    fan: true,
+                    heatSetPoint,
+                    OutdoorHumidityUnavailableReason)),
 
-        var cool = input.Mode == HvacMode.Cool
-            && MoreHumidOutside(input, absoluteHumidity)
-            && ShouldCool(input, previousState, absoluteHumidity);
+            HvacMode.Cool => Transition(
+                previousState,
+                input.Now,
+                CreateOutput(
+                    heat: false,
+                    cool: ShouldCool(input, previousState, absoluteHumidity),
+                    fan: true,
+                    heatSetPoint,
+                    NormalReason)),
 
-        var fan = true;
-
-        // Hard safety rule.
-        if (heat && cool)
-        {
-            heat = false;
-            cool = false;
-            fan = false;
-        }
-
-        return Transition(previousState, input.Now, new ThermostatOutput
-        {
-            Heat = heat,
-            Cool = cool,
-            Fan = fan,
-            HeatSetPointFahr = heatSetPoint,
-            Reason = "Everything Normal"
-        });
+            _ => SafeOff(previousState, input.Now, $"Unsupported HVAC mode: {input.Mode}")
+        };
     }
 
     private double GetHeatSetPoint(ThermostatInput input)
     {
-        var currentTime = TimeOnly.FromDateTime(input.Now.LocalDateTime);
-
-        var isNightTime = _settings.NightHeatStart > _settings.NightHeatEnd
-            ? currentTime >= _settings.NightHeatStart ||
-            currentTime < _settings.NightHeatEnd
-            : currentTime >= _settings.NightHeatStart &&
-            currentTime < _settings.NightHeatEnd;
-
-        if (isNightTime)
+        if (IsNightTime(input.Now))
         {
             return _settings.NightHeatSetPoint;
         }
 
-        var hasRecentMotion =
-            input.LastMotionDetected is not null &&
-            input.Now - input.LastMotionDetected <= _settings.MotionSetPointHoldTime;
-
-        return hasRecentMotion
+        return HasRecentMotion(input)
             ? _settings.DayHeatSetPoint
             : _settings.NightHeatSetPoint;
+    }
+
+    private bool IsNightTime(DateTimeOffset now)
+    {
+        var currentTime = TimeOnly.FromDateTime(now.LocalDateTime);
+
+        return _settings.NightHeatStart > _settings.NightHeatEnd
+            ? currentTime >= _settings.NightHeatStart ||
+              currentTime < _settings.NightHeatEnd
+            : currentTime >= _settings.NightHeatStart &&
+              currentTime < _settings.NightHeatEnd;
+    }
+
+    private bool HasRecentMotion(ThermostatInput input)
+    {
+        return input.LastMotionDetected is not null &&
+               input.Now - input.LastMotionDetected <= _settings.MotionSetPointHoldTime;
     }
 
     private bool ShouldHeat(
@@ -109,11 +116,7 @@ public sealed class ThermostatEngine
     {
         if (state.WasHeating)
         {
-            var minRunSatisfied =
-                state.LastHeatStarted is null ||
-                input.Now - state.LastHeatStarted >= _settings.MinimumRunTime;
-
-            if (!minRunSatisfied)
+            if (!MinimumRunSatisfied(input.Now, state.LastHeatStarted))
             {
                 return true;
             }
@@ -121,20 +124,8 @@ public sealed class ThermostatEngine
             return temp < heatSetPoint;
         }
 
-        var minOffSatisfied =
-            state.LastHeatStopped is null ||
-            input.Now - state.LastHeatStopped >= _settings.MinimumOffTime;
-
-        return minOffSatisfied &&
+        return MinimumOffSatisfied(input.Now, state.LastHeatStopped) &&
                temp <= heatSetPoint - _settings.TemperatureDifferentialF;
-    }
-
-    private static bool MoreHumidOutside(
-        ThermostatInput input,
-        double absoluteHumidity)
-    {
-        return input.OutsideAbsoluteHumidity is not null &&
-            input.OutsideAbsoluteHumidity > absoluteHumidity;
     }
 
     private bool ShouldCool(
@@ -144,11 +135,7 @@ public sealed class ThermostatEngine
     {
         if (state.WasCooling)
         {
-            var minRunSatisfied =
-                state.LastCoolStarted is null ||
-                input.Now - state.LastCoolStarted >= _settings.MinimumRunTime;
-
-            if (!minRunSatisfied)
+            if (!MinimumRunSatisfied(input.Now, state.LastCoolStarted))
             {
                 return true;
             }
@@ -156,12 +143,50 @@ public sealed class ThermostatEngine
             return absoluteHumidity > _settings.AbsoluteHumidityCoolingOffThreshold;
         }
 
-        var minOffSatisfied =
-            state.LastCoolStopped is null ||
-            input.Now - state.LastCoolStopped >= _settings.MinimumOffTime;
+        return MinimumOffSatisfied(input.Now, state.LastCoolStopped) &&
+               TooHumidInsideAndOut(input, absoluteHumidity);
+    }
 
-        return minOffSatisfied &&
-            absoluteHumidity >= _settings.AbsoluteHumidityCoolingOnThreshold;
+    private bool TooHumidInsideAndOut(
+        ThermostatInput input,
+        double absoluteHumidity)
+    {
+        return input.OutsideAbsoluteHumidity is not null &&
+               input.OutsideAbsoluteHumidity > _settings.OutdoorGoodHumidityHighestLevel &&
+               absoluteHumidity >= _settings.AbsoluteHumidityCoolingOnThreshold;
+    }
+
+    private bool MinimumRunSatisfied(
+        DateTimeOffset now,
+        DateTimeOffset? startedAt)
+    {
+        return startedAt is null ||
+               now - startedAt >= _settings.MinimumRunTime;
+    }
+
+    private bool MinimumOffSatisfied(
+        DateTimeOffset now,
+        DateTimeOffset? stoppedAt)
+    {
+        return stoppedAt is null ||
+               now - stoppedAt >= _settings.MinimumOffTime;
+    }
+
+    private static ThermostatOutput CreateOutput(
+        bool heat,
+        bool cool,
+        bool fan,
+        double? heatSetPoint,
+        string reason)
+    {
+        return new ThermostatOutput
+        {
+            Heat = heat,
+            Cool = cool,
+            Fan = fan,
+            HeatSetPointFahr = heatSetPoint,
+            Reason = reason
+        };
     }
 
     private static (ThermostatOutput Output, ThermostatRuntimeState State) SafeOff(

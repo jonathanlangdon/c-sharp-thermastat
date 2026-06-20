@@ -99,53 +99,6 @@ public sealed class ThermostatEngineCoolingHumidityTests
         Assert.Equal("No humidity reading", output.Reason);
     }
 
-    [Fact]
-    public void Evaluate_DoesNotCoolWhenOutsideHumidityEqualsControlHumidityEvenIfCoolingThresholdIsMet()
-    {
-        var now = TestTime();
-        var engine = new ThermostatEngine(new HvacSettings());
-
-        var input = CoolInput(now);
-        var controlHumidity = input.ControlHumidity!.Value;
-
-        input = input with
-        {
-            OutsideAbsoluteHumidity = controlHumidity
-        };
-
-        var (output, _) = engine.Evaluate(
-            input,
-            ThermostatRuntimeState.Empty);
-
-        Assert.False(output.Cool);
-        Assert.False(output.Heat);
-        Assert.True(output.Fan);
-        Assert.Equal("Everything Normal", output.Reason);
-    }
-
-    [Fact]
-    public void Evaluate_DoesNotCoolWhenOutsideHumidityIsLowerThanControlHumidityEvenIfCoolingThresholdIsMet()
-    {
-        var now = TestTime();
-        var engine = new ThermostatEngine(new HvacSettings());
-
-        var input = CoolInput(now);
-        var controlHumidity = input.ControlHumidity!.Value;
-
-        input = input with
-        {
-            OutsideAbsoluteHumidity = controlHumidity - 0.01
-        };
-
-        var (output, _) = engine.Evaluate(
-            input,
-            ThermostatRuntimeState.Empty);
-
-        Assert.False(output.Cool);
-        Assert.False(output.Heat);
-        Assert.True(output.Fan);
-        Assert.Equal("Everything Normal", output.Reason);
-    }
 
     [Fact]
     public void Evaluate_DoesNotCoolWhenCoolingThresholdIsNotMetEvenIfOutsideIsMoreHumid()
@@ -225,6 +178,180 @@ public sealed class ThermostatEngineCoolingHumidityTests
             Now = now,
             LastSensorUpdate = now
         };
+    }
+
+    [Fact]
+    public void Evaluate_CoolMode_Outside60OutHumidity10Point5Inside70InsideHumidity11_Cools()
+    {
+        var input = CoolInputForAbsoluteHumidity(
+            outsideTemperatureFahr: 60.0,
+            outsideAbsoluteHumidity: 10.5,
+            insideTemperatureFahr: 70.0,
+            insideAbsoluteHumidity: 11.0);
+
+        AssertCoolingResult(input, shouldCool: true);
+    }
+
+    [Fact]
+    public void Evaluate_CoolMode_Outside80OutHumidity10Point5Inside80InsideHumidity11_Cools()
+    {
+        var input = CoolInputForAbsoluteHumidity(
+            outsideTemperatureFahr: 80.0,
+            outsideAbsoluteHumidity: 10.5,
+            insideTemperatureFahr: 80.0,
+            insideAbsoluteHumidity: 11.0);
+
+        AssertCoolingResult(input, shouldCool: true);
+    }
+
+    [Fact]
+    public void Evaluate_CoolMode_Outside60OutHumidity10Point5Inside70InsideHumidity10Point9_RunsFanOnly()
+    {
+        var input = CoolInputForAbsoluteHumidity(
+            outsideTemperatureFahr: 60.0,
+            outsideAbsoluteHumidity: 10.5,
+            insideTemperatureFahr: 70.0,
+            insideAbsoluteHumidity: 10.9);
+
+        AssertCoolingResult(input, shouldCool: false);
+    }
+
+    [Fact]
+    public void Evaluate_CoolMode_Outside60OutHumidity10Point4Inside70InsideHumidity11_RunsFanOnly()
+    {
+        var input = CoolInputForAbsoluteHumidity(
+            outsideTemperatureFahr: 60.0,
+            outsideAbsoluteHumidity: 10.4,
+            insideTemperatureFahr: 70.0,
+            insideAbsoluteHumidity: 11.0);
+
+        AssertCoolingResult(input, shouldCool: false);
+    }
+
+    [Fact]
+    public void Evaluate_CoolMode_Outside60OutHumidity10Point4Inside70InsideHumidity10Point9_RunsFanOnly()
+    {
+        var input = CoolInputForAbsoluteHumidity(
+            outsideTemperatureFahr: 60.0,
+            outsideAbsoluteHumidity: 10.4,
+            insideTemperatureFahr: 70.0,
+            insideAbsoluteHumidity: 10.9);
+
+        AssertCoolingResult(input, shouldCool: false);
+    }
+
+    [Fact]
+    public void Evaluate_CoolMode_Outside59OutHumidity10Point4Inside70InsideHumidity11_RunsFanOnly()
+    {
+        var input = CoolInputForAbsoluteHumidity(
+            outsideTemperatureFahr: 59.0,
+            outsideAbsoluteHumidity: 10.4,
+            insideTemperatureFahr: 70.0,
+            insideAbsoluteHumidity: 11.0);
+
+        AssertCoolingResult(input, shouldCool: false);
+    }
+
+    [Fact]
+    public void Evaluate_CoolMode_Outside40OutHumidity10Point4Inside70InsideHumidity11_RunsFanOnly()
+    {
+        var input = CoolInputForAbsoluteHumidity(
+            outsideTemperatureFahr: 40.0,
+            outsideAbsoluteHumidity: 10.4,
+            insideTemperatureFahr: 70.0,
+            insideAbsoluteHumidity: 11.0);
+
+        AssertCoolingResult(input, shouldCool: false);
+    }
+
+    [Fact]
+    public void Evaluate_CoolMode_Outside70OutHumidity10Point5Inside80InsideHumidity10Point9_RunsFanOnly()
+    {
+        var input = CoolInputForAbsoluteHumidity(
+            outsideTemperatureFahr: 70.0,
+            outsideAbsoluteHumidity: 10.5,
+            insideTemperatureFahr: 80.0,
+            insideAbsoluteHumidity: 10.9);
+
+        AssertCoolingResult(input, shouldCool: false);
+    }
+
+    [Fact]
+    public void Evaluate_CoolMode_Outside75OutHumidity10Point4Inside70InsideHumidity11_RunsFanOnly()
+    {
+        var input = CoolInputForAbsoluteHumidity(
+            outsideTemperatureFahr: 75.0,
+            outsideAbsoluteHumidity: 10.4,
+            insideTemperatureFahr: 70.0,
+            insideAbsoluteHumidity: 11.0);
+
+        AssertCoolingResult(input, shouldCool: false);
+    }
+
+
+
+    private static void AssertCoolingResult(
+    ThermostatInput input,
+    bool shouldCool)
+{
+    var engine = new ThermostatEngine(CoolingEdgeCaseSettings());
+
+    var (output, _) = engine.Evaluate(
+        input,
+        ThermostatRuntimeState.Empty);
+
+    Assert.Equal(shouldCool, output.Cool);
+    Assert.False(output.Heat);
+    Assert.True(output.Fan);
+    Assert.Equal("Everything Normal", output.Reason);
+}
+
+private static HvacSettings CoolingEdgeCaseSettings()
+{
+    return new HvacSettings
+    {
+        AbsoluteHumidityCoolingOnThreshold = 11.0,
+        AbsoluteHumidityCoolingOffThreshold = 10.5,
+        OutdoorGoodHumidityHighestLevel = 10.4
+    };
+}
+
+private static ThermostatInput CoolInputForAbsoluteHumidity(
+    double outsideTemperatureFahr,
+    double outsideAbsoluteHumidity,
+    double insideTemperatureFahr,
+    double insideAbsoluteHumidity)
+{
+    var now = TestTime();
+
+    return new ThermostatInput
+    {
+        CurrentTempFahrUp = insideTemperatureFahr,
+        HumidityUpstairs = RelativeHumidityForAbsoluteHumidity(
+            insideTemperatureFahr,
+            insideAbsoluteHumidity),
+        Mode = HvacMode.Cool,
+        OutsideAbsoluteHumidity = outsideAbsoluteHumidity,
+        Now = now,
+        LastSensorUpdate = now
+
+        // If ThermostatInput has an outside temperature property, add it here:
+        // OutsideTempFahr = outsideTemperatureFahr
+    };
+}
+
+    private static double RelativeHumidityForAbsoluteHumidity(
+        double temperatureFahr,
+        double absoluteHumidity)
+    {
+        var temperatureC = (temperatureFahr - 32.0) * 5.0 / 9.0;
+
+        var saturationVaporPressure =
+            6.112 * Math.Exp((17.67 * temperatureC) / (temperatureC + 243.5));
+
+        return absoluteHumidity *
+            (273.15 + temperatureC) /
+            (saturationVaporPressure * 2.1674);
     }
 
     private static DateTimeOffset TestTime()

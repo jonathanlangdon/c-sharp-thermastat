@@ -1,6 +1,4 @@
 using System.Text;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using MQTTnet;
 using System.Buffers;
 
@@ -8,16 +6,20 @@ namespace HvacController.Services;
 
 public sealed class UpstairsSensorMqttSubscriber : BackgroundService
 {
-    private const string Topic = "hvac/upstairs/sensor";
+    private const string UpstairsSensorTopic = "hvac/upstairs/sensor";
+    private const string ModeSetTopic = "hvac/mode/set";
 
-    private readonly UpstairsSensorMessageHandler _handler;
+    private readonly UpstairsSensorMessageHandler _upstairsSensorHandler;
+    private readonly ModeSetMessageHandler _modeSetHandler;
     private readonly ILogger<UpstairsSensorMqttSubscriber> _logger;
 
     public UpstairsSensorMqttSubscriber(
-        UpstairsSensorMessageHandler handler,
+        UpstairsSensorMessageHandler upstairsSensorHandler,
+        ModeSetMessageHandler modeSetHandler,
         ILogger<UpstairsSensorMqttSubscriber> logger)
     {
-        _handler = handler;
+        _upstairsSensorHandler = upstairsSensorHandler;
+        _modeSetHandler = modeSetHandler;
         _logger = logger;
     }
 
@@ -28,25 +30,58 @@ public sealed class UpstairsSensorMqttSubscriber : BackgroundService
 
         mqttClient.ApplicationMessageReceivedAsync += e =>
         {
-            var payload = Encoding.UTF8.GetString(e.ApplicationMessage.Payload.ToArray());
+            var topic = e.ApplicationMessage.Topic;
+            var payload = Encoding.UTF8.GetString(
+                e.ApplicationMessage.Payload.ToArray());
 
-            var handled = _handler.Handle(
-                payload,
-                DateTimeOffset.Now);
+            if (topic == UpstairsSensorTopic)
+            {
+                var handled = _upstairsSensorHandler.Handle(
+                    payload,
+                    DateTimeOffset.Now);
 
-            if (handled)
-            {
-                _logger.LogInformation(
-                    "Handled upstairs sensor MQTT message from topic {Topic}.",
-                    e.ApplicationMessage.Topic);
+                if (handled)
+                {
+                    _logger.LogInformation(
+                        "Handled upstairs sensor MQTT message from topic {Topic}.",
+                        topic);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Ignored invalid upstairs sensor MQTT message from topic {Topic}: {Payload}",
+                        topic,
+                        payload);
+                }
+
+                return Task.CompletedTask;
             }
-            else
+
+            if (topic == ModeSetTopic)
             {
-                _logger.LogWarning(
-                    "Ignored invalid upstairs sensor MQTT message from topic {Topic}: {Payload}",
-                    e.ApplicationMessage.Topic,
-                    payload);
+                var handled = _modeSetHandler.Handle(payload);
+
+                if (handled)
+                {
+                    _logger.LogInformation(
+                        "Handled mode set MQTT message from topic {Topic}.",
+                        topic);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Ignored invalid mode set MQTT message from topic {Topic}: {Payload}",
+                        topic,
+                        payload);
+                }
+
+                return Task.CompletedTask;
             }
+
+            _logger.LogWarning(
+                "Ignored MQTT message from unexpected topic {Topic}: {Payload}",
+                topic,
+                payload);
 
             return Task.CompletedTask;
         };
@@ -71,7 +106,8 @@ public sealed class UpstairsSensorMqttSubscriber : BackgroundService
 
                     var subscribeOptions = mqttFactory
                         .CreateSubscribeOptionsBuilder()
-                        .WithTopicFilter(Topic)
+                        .WithTopicFilter(UpstairsSensorTopic)
+                        .WithTopicFilter(ModeSetTopic)
                         .Build();
 
                     await mqttClient.SubscribeAsync(
@@ -79,8 +115,9 @@ public sealed class UpstairsSensorMqttSubscriber : BackgroundService
                         stoppingToken);
 
                     _logger.LogInformation(
-                        "Subscribed to MQTT topic {Topic}.",
-                        Topic);
+                        "Subscribed to MQTT topics {UpstairsSensorTopic} and {ModeSetTopic}.",
+                        UpstairsSensorTopic,
+                        ModeSetTopic);
                 }
 
                 await Task.Delay(

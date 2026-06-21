@@ -73,6 +73,7 @@ const int MQTT_PORT = 1883;
 
 const char* SENSOR_TOPIC = "hvac/upstairs/sensor";
 const char* STATUS_TOPIC = "hvac/status";
+const char* MODE_SET_TOPIC = "hvac/mode/set";
 
 TCA9554 TCA(0x20);
 
@@ -504,6 +505,28 @@ void handleWiFiConnection() {
   lastWiFiAttemptMs = millis();
 }
 
+void publishModeCommand(const String& mode) {
+  if (!mqttClient.connected()) {
+    Serial.println("Skipping mode publish because MQTT is not connected.");
+    return;
+  }
+
+  StaticJsonDocument<128> doc;
+  doc["mode"] = mode;
+
+  char buffer[128];
+  size_t length = serializeJson(doc, buffer);
+
+  bool published = mqttClient.publish(
+    MODE_SET_TOPIC,
+    buffer,
+    length);
+
+  Serial.print("Published mode command: ");
+  Serial.println(published ? "yes" : "no");
+  Serial.println(buffer);
+}
+
 void publishUpstairsSensorReading() {
   bool hasReading = readSht45();
 
@@ -521,7 +544,6 @@ void publishUpstairsSensorReading() {
   doc["temperatureFahr"] = round(upstairsTemperatureF * 10.0) / 10.0;
   doc["relativeHumidity"] = round(upstairsRelativeHumidity * 10.0) / 10.0;
   doc["motionDetected"] = motionDetected;
-  doc["mode"] = selectedMode;
 
   char buffer[256];
   size_t length = serializeJson(doc, buffer);
@@ -833,7 +855,7 @@ void changeSelectedMode(const String& newMode) {
   drawBottomBar();
   gfx->flush();
 
-  publishUpstairsSensorReading();
+  publishModeCommand(selectedMode);
 }
 
 void handleTouchPress(int x, int y) {

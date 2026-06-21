@@ -41,6 +41,7 @@ builder.Services.AddSingleton<IDownstairsSensorUpdater, DownstairsSensorUpdater>
 builder.Services.AddSingleton<OutsideWeatherState>();
 builder.Services.AddSingleton<IOutsideWeatherUpdater, OutsideWeatherUpdater>();
 builder.Services.AddSingleton<IThermostatPersistentStateStore, ThermostatPersistentStateStore>();
+builder.Services.AddSingleton<ModeSetMessageHandler>();
 
 builder.Services.AddSingleton<IOutsideWeatherClient>(_ =>
 {

@@ -29,7 +29,16 @@ public sealed class ThermostatCycleRunnerTests
         var settings = new HvacSettings();
         var relays = new FakeRelayService();
         var statusPublisher = new NoOpThermostatStatusPublisher();
-        var persistentStateStore = new FakeThermostatPersistentStateStore();
+        var persistentStateStore = new FakeThermostatPersistentStateStore
+{
+        State = new ThermostatPersistentState
+        {
+            Mode = HvacMode.Cool,
+            HeatSetPointDay = 70.5,
+            HeatSetPointNight = 65.0,
+            MaxAbsHumSetPoint = 9.5
+        }
+};
 
         var runner = new ThermostatCycleRunner(
             inputBuilder,
@@ -98,7 +107,7 @@ public sealed class ThermostatCycleRunnerTests
 
     private sealed class FakeThermostatPersistentStateStore : IThermostatPersistentStateStore
     {
-        public ThermostatPersistentState State { get; private set; } = new();
+        public ThermostatPersistentState State { get; set; } = new();
 
         public ThermostatPersistentState Load()
         {

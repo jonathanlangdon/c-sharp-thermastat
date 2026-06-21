@@ -543,7 +543,7 @@ public sealed class ThermostatEngineTests
             maxAbsHumSetPoint: 9.5) with
         {
             CurrentTempFahrDown = 72,
-            HumidityDownstairs = 50,
+            HumidityDownstairs = 55,
             LastMotionDetected = now
         };
 

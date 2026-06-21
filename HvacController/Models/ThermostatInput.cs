@@ -28,7 +28,7 @@ public sealed record ThermostatInput
             ? null
             : AbsoluteHumidityCalculator.CalculateGramsPerCubicMeterFromFahrenheit(
                 CurrentTempFahrDown.Value,
-                HumidityDownstairs.Value);
+                HumidityDownstairs.Value) - 1; // custom adjustment as of 2026-06-21
 
     public double? ControlHumidity
     {

@@ -4,15 +4,14 @@ public sealed record HvacSettings
 {
     public double TemperatureDifferentialF { get; init; } = 0.5;
 
-    public double DayHeatSetPoint { get; init; } = 70.5;
-    public double NightHeatSetPoint { get; init; } = 65.0;
+    // public double DayHeatSetPoint { get; init; } = 70.5; // fallback default
+    // public double NightHeatSetPoint { get; init; } = 65.0; // fallback default
+    // public double AbsoluteHumidityCoolingOnThreshold { get; init; } = 10.8; // fallback default
 
     public TimeOnly NightHeatStart { get; init; } = new(19, 0);
     public TimeOnly NightHeatEnd { get; init; } = new(6, 0);
 
-    public double AbsoluteHumidityCoolingOnThreshold { get; init; } = 10.8;
-
-    public TimeSpan MinimumRunTime { get; init; } = TimeSpan.FromMinutes(5);
+    public TimeSpan MinSafetyWindowTime { get; init; } = TimeSpan.FromMinutes(5);
 
     public TimeSpan SensorTimeout { get; init; } = TimeSpan.FromMinutes(3);
 
@@ -20,10 +19,10 @@ public sealed record HvacSettings
 
     public void ValidateFixedSettings()
     {
-        if (MinimumRunTime <= TimeSpan.Zero)
+        if (MinSafetyWindowTime <= TimeSpan.Zero)
         {
             throw new ArgumentOutOfRangeException(
-                nameof(MinimumRunTime),
+                nameof(MinSafetyWindowTime),
                 "Minimum run time must be greater than zero.");
         }
 

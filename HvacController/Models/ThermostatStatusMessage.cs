@@ -13,7 +13,10 @@ public sealed record ThermostatStatusMessage
     public string Reason { get; init; } = "";
 
     public HvacMode Mode { get; init; }
-    public double? HeatSetPointFahr { get; init; }
+    public double? HeatSetPointFahr { get; init; } // replace later on waveshare
+    public double HeatSetPointDay { get; init; }
+    public double HeatSetPointNight { get; init; }
+    public double MaxAbsHumSetPoint { get; init; }
     
     public double? UpstairsTemperature { get; init; }
     public double? UpstairsRelativeHumidity { get; init; }

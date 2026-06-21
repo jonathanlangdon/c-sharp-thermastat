@@ -40,7 +40,6 @@ public sealed class ThermostatEngine
         }
 
         var temp = input.CurrentTempFahrUp.Value;
-        var absoluteHumidity = input.ControlHumidity.Value;
         var heatSetPoint = GetHeatSetPoint(input);
 
         return input.Mode switch
@@ -70,7 +69,7 @@ public sealed class ThermostatEngine
                 input.Now,
                 CreateOutput(
                     heat: false,
-                    cool: ShouldCool(input, previousState, absoluteHumidity),
+                    cool: ShouldCool(input, previousState),
                     fan: true,
                     heatSetPoint,
                     NormalReason)),
@@ -83,12 +82,12 @@ public sealed class ThermostatEngine
     {
         if (IsNightTime(input.Now))
         {
-            return _settings.NightHeatSetPoint;
+            return input.NightHeatSetPoint;
         }
 
         return HasRecentMotion(input)
-            ? _settings.DayHeatSetPoint
-            : _settings.NightHeatSetPoint;
+            ? input.DayHeatSetPoint
+            : input.NightHeatSetPoint;
     }
 
     private bool IsNightTime(DateTimeOffset now)
@@ -130,16 +129,15 @@ public sealed class ThermostatEngine
 
     private bool ShouldCool(
         ThermostatInput input,
-        ThermostatRuntimeState state,
-        double absoluteHumidity)
+        ThermostatRuntimeState state)
     {
         if (state.WasCooling && !MinimumRunSatisfied(input.Now, state.LastCoolStarted))
         {
-                return true;
+            return true;
         }
 
         return MinimumOffSatisfied(input.Now, state.LastCoolStopped) &&
-               absoluteHumidity >= _settings.AbsoluteHumidityCoolingOnThreshold;
+            input.ControlHumidity >= input.AbsoluteHumidityCoolingOnThreshold;
     }
 
     private bool MinimumRunSatisfied(
@@ -147,7 +145,7 @@ public sealed class ThermostatEngine
         DateTimeOffset? startedAt)
     {
         return startedAt is null ||
-               now - startedAt >= _settings.MinimumRunTime;
+               now - startedAt >= _settings.MinSafetyWindowTime;
     }
 
     private bool MinimumOffSatisfied(
@@ -155,7 +153,7 @@ public sealed class ThermostatEngine
         DateTimeOffset? stoppedAt)
     {
         return stoppedAt is null ||
-               now - stoppedAt >= _settings.MinimumRunTime;
+               now - stoppedAt >= _settings.MinSafetyWindowTime;
     }
 
     private static ThermostatOutput CreateOutput(

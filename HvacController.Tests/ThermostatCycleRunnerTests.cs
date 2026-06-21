@@ -26,14 +26,18 @@ public sealed class ThermostatCycleRunnerTests
         });
 
         var inputBuilder = new ThermostatInputBuilder(indoorState, outsideState);
+        var settings = new HvacSettings();
         var relays = new FakeRelayService();
+        var statusPublisher = new NoOpThermostatStatusPublisher();
+        var persistentStateStore = new FakeThermostatPersistentStateStore();
 
         var runner = new ThermostatCycleRunner(
             inputBuilder,
-            new HvacSettings(),
+            settings,
             relays,
-            new NoOpThermostatStatusPublisher(),
-            outsideState);
+            statusPublisher,
+            outsideState,
+            persistentStateStore);
 
         await runner.RunOnceAsync(now, CancellationToken.None);
 
@@ -51,14 +55,18 @@ public sealed class ThermostatCycleRunnerTests
         var outsideState = new OutsideWeatherState();
 
         var inputBuilder = new ThermostatInputBuilder(indoorState, outsideState);
+        var settings = new HvacSettings();
         var relays = new FakeRelayService();
+        var statusPublisher = new NoOpThermostatStatusPublisher();
+        var persistentStateStore = new FakeThermostatPersistentStateStore();
 
         var runner = new ThermostatCycleRunner(
             inputBuilder,
-            new HvacSettings(),
+            settings,
             relays,
-            new NoOpThermostatStatusPublisher(),
-            outsideState);
+            statusPublisher,
+            outsideState,
+            persistentStateStore);
 
         await runner.RunOnceAsync(now, CancellationToken.None);
 
@@ -85,6 +93,21 @@ public sealed class ThermostatCycleRunnerTests
             Heat = heat;
             Cool = cool;
             Fan = fan;
+        }
+    }
+
+    private sealed class FakeThermostatPersistentStateStore : IThermostatPersistentStateStore
+    {
+        public ThermostatPersistentState State { get; private set; } = new();
+
+        public ThermostatPersistentState Load()
+        {
+            return State;
+        }
+
+        public void Save(ThermostatPersistentState state)
+        {
+            State = state;
         }
     }
 }

@@ -4,6 +4,7 @@ namespace HvacController.Services;
 
 public static class ThermostatStatusMessageBuilder
 {
+    
     public static ThermostatStatusMessage Build(
         ThermostatInput input,
         ThermostatOutput output,
@@ -12,7 +13,8 @@ public static class ThermostatStatusMessageBuilder
         DateTimeOffset? outsideWeatherUpdatedAt = null)
     {
         return new ThermostatStatusMessage
-        {
+        {       
+            
             Now = input.Now,
             LastSensorUpdate = input.LastSensorUpdate,
             LastMotionDetected = input.LastMotionDetected,
@@ -25,6 +27,9 @@ public static class ThermostatStatusMessageBuilder
 
             Mode = input.Mode,
             HeatSetPointFahr = output.HeatSetPointFahr,
+            HeatSetPointDay = input.DayHeatSetPoint,
+            HeatSetPointNight = input.NightHeatSetPoint,
+            MaxAbsHumSetPoint = input.AbsoluteHumidityCoolingOnThreshold,
 
             UpstairsTemperature = input.CurrentTempFahrUp,
             UpstairsRelativeHumidity = input.HumidityUpstairs,

@@ -12,6 +12,10 @@ public sealed record ThermostatInput
 
     public double? OutsideAbsoluteHumidity { get; init; }
 
+    public double DayHeatSetPoint { get; init; } = 70.5; // default value if not set
+    public double NightHeatSetPoint { get; init; } = 65.0; // default value if not set
+    public double AbsoluteHumidityCoolingOnThreshold { get; init; } = 10.8; // default value if not set
+
     public double? AbsoluteHumidityUpstairs =>
         CurrentTempFahrUp is null || HumidityUpstairs is null
             ? null

@@ -5,7 +5,7 @@ public sealed record ThermostatPersistentState
     public DateTimeOffset? LastSensorUpdate { get; init; }
     public DateTimeOffset? LastMotionDetected { get; init; }
 
-    public HvacMode Mode { get; init; } = HvacMode.Cool;
+    public HvacMode Mode { get; init; } = HvacMode.Heat;
 
     public double HeatSetPointDay { get; init; } = 70.5;
     public double HeatSetPointNight { get; init; } = 65.0;

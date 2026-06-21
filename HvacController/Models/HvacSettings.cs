@@ -4,10 +4,6 @@ public sealed record HvacSettings
 {
     public double TemperatureDifferentialF { get; init; } = 0.5;
 
-    // public double DayHeatSetPoint { get; init; } = 70.5; // fallback default
-    // public double NightHeatSetPoint { get; init; } = 65.0; // fallback default
-    // public double AbsoluteHumidityCoolingOnThreshold { get; init; } = 10.8; // fallback default
-
     public TimeOnly NightHeatStart { get; init; } = new(19, 0);
     public TimeOnly NightHeatEnd { get; init; } = new(6, 0);
 

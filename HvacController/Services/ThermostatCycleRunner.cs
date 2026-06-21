@@ -46,10 +46,7 @@ public sealed class ThermostatCycleRunner
             LastMotionDetected =
                 rawInput.LastMotionDetected ?? persisted.LastMotionDetected,
 
-            Mode =
-                rawInput.LastSensorUpdate is null
-                    ? persisted.Mode
-                    : rawInput.Mode,
+            Mode = persisted.Mode,
 
             DayHeatSetPoint = persisted.HeatSetPointDay,
             NightHeatSetPoint = persisted.HeatSetPointNight,

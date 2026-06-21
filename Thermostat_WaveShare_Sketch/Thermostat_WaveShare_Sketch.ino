@@ -68,6 +68,10 @@ double upstairsRelativeHumidity = NAN;
 
 String selectedMode = "Cool";
 
+String pendingMode = "";
+unsigned long pendingModeStartedMs = 0;
+const unsigned long pendingModeHoldMs = 15000;
+
 const char* MQTT_HOST = "hvac.local";
 const int MQTT_PORT = 1883;
 
@@ -120,6 +124,7 @@ struct HvacStatus {
   String mode = "Heat";
 
   double heatSetPointFahr = NAN;
+  double maxAbsHumSetPoint = NAN;
 
   double upstairsTemperature = NAN;
   double upstairsAbsoluteHumidity = NAN;
@@ -212,7 +217,7 @@ String formatSetPoint(double value) {
     return "--";
   }
 
-  return String((int)floor(value));
+  return String(value, 1);
 }
 
 String formatOneDecimal(double value) {
@@ -370,6 +375,43 @@ bool updateSelectedModeFromStatus() {
     return false;
   }
 
+  if (pendingMode != "") {
+    unsigned long pendingAgeMs = millis() - pendingModeStartedMs;
+
+    if (statusMode == pendingMode) {
+      Serial.print("Mode command confirmed by hvac/status: ");
+      Serial.println(statusMode);
+
+      pendingMode = "";
+
+      if (selectedMode == statusMode) {
+        return false;
+      }
+
+      selectedMode = statusMode;
+      return true;
+    }
+
+    if (pendingAgeMs <= pendingModeHoldMs) {
+      Serial.print("Holding requested mode while waiting for confirmation. requested=");
+      Serial.print(pendingMode);
+      Serial.print(" status=");
+      Serial.print(statusMode);
+      Serial.print(" ageMs=");
+      Serial.println(pendingAgeMs);
+
+      selectedMode = pendingMode;
+      bottomBarHeatW = getTargetHeatWidth();
+
+      return false;
+    }
+
+    Serial.print("Mode command timed out. Accepting status mode: ");
+    Serial.println(statusMode);
+
+    pendingMode = "";
+  }
+
   if (selectedMode == statusMode) {
     return false;
   }
@@ -394,7 +436,7 @@ void drawBottomBar() {
                        : "Heat";
 
   String coolLabel = coolW > 150
-                       ? "Cooling"
+                       ? "Cooling to " + formatSetPoint(latestStatus.maxAbsHumSetPoint)
                        : "Cool";
 
   gfx->fillRect(SAFE_X, barY, SAFE_W, barH, HVAC_BG);
@@ -527,6 +569,19 @@ void publishModeCommand(const String& mode) {
   Serial.println(buffer);
 }
 
+bool hasPendingModeChange() {
+  if (pendingMode == "") {
+    return false;
+  }
+
+  if (millis() - pendingModeStartedMs > pendingModeHoldMs) {
+    pendingMode = "";
+    return false;
+  }
+
+  return true;
+}
+
 void publishUpstairsSensorReading() {
   bool hasReading = readSht45();
 
@@ -580,6 +635,7 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
   latestStatus.mode = doc["mode"] | "";
 
   latestStatus.heatSetPointFahr = doc["heatSetPointFahr"] | NAN;
+  latestStatus.maxAbsHumSetPoint = doc["maxAbsHumSetPoint"] | NAN;
 
   latestStatus.upstairsTemperature = doc["upstairsTemperature"] | NAN;
   latestStatus.upstairsAbsoluteHumidity = doc["upstairsAbsoluteHumidity"] | NAN;
@@ -587,12 +643,20 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
   latestStatus.outsideTemperature = doc["outsideTemperature"] | NAN;
   latestStatus.outsideAbsoluteHumidity = doc["outsideAbsoluteHumidity"] | NAN;
 
-    bool modeChanged = updateSelectedModeFromStatus();
+  bool modeChanged = updateSelectedModeFromStatus();
 
-  Serial.print("Parsed HVAC status. Mode=");
+  Serial.print("Parsed HVAC status. statusMode=");
   Serial.print(latestStatus.mode);
   Serial.print(" selectedMode=");
-  Serial.println(selectedMode);
+  Serial.print(selectedMode);
+  Serial.print(" pendingMode=");
+  Serial.println(pendingMode);
+
+  if (pendingMode != "") {
+    bottomBarHeatW = getTargetHeatWidth();
+    drawThermostatScreen();
+    return;
+  }
 
   drawThermostatScreen();
 
@@ -834,6 +898,8 @@ void changeSelectedMode(const String& newMode) {
   }
 
   selectedMode = newMode;
+  pendingMode = newMode;
+  pendingModeStartedMs = millis();
 
   int startHeatW = bottomBarHeatW;
   int targetHeatW = getTargetHeatWidth();

@@ -140,7 +140,8 @@ public sealed class ThermostatEngine
                 return true;
             }
 
-            return absoluteHumidity > _settings.AbsoluteHumidityCoolingOffThreshold;
+            return absoluteHumidity > _settings.AbsoluteHumidityCoolingOffThreshold &&
+                TooHumidInsideAndOut(input, absoluteHumidity);
         }
 
         return MinimumOffSatisfied(input.Now, state.LastCoolStopped) &&

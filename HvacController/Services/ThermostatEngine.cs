@@ -133,27 +133,12 @@ public sealed class ThermostatEngine
         ThermostatRuntimeState state,
         double absoluteHumidity)
     {
-        if (state.WasCooling)
+        if (state.WasCooling && !MinimumRunSatisfied(input.Now, state.LastCoolStarted))
         {
-            if (!MinimumRunSatisfied(input.Now, state.LastCoolStarted))
-            {
                 return true;
-            }
-
-            return absoluteHumidity > _settings.AbsoluteHumidityCoolingOffThreshold &&
-                TooHumidInsideAndOut(input, absoluteHumidity);
         }
 
         return MinimumOffSatisfied(input.Now, state.LastCoolStopped) &&
-               TooHumidInsideAndOut(input, absoluteHumidity);
-    }
-
-    private bool TooHumidInsideAndOut(
-        ThermostatInput input,
-        double absoluteHumidity)
-    {
-        return input.OutsideAbsoluteHumidity is not null &&
-               input.OutsideAbsoluteHumidity > _settings.OutdoorGoodHumidityHighestLevel &&
                absoluteHumidity >= _settings.AbsoluteHumidityCoolingOnThreshold;
     }
 
@@ -170,7 +155,7 @@ public sealed class ThermostatEngine
         DateTimeOffset? stoppedAt)
     {
         return stoppedAt is null ||
-               now - stoppedAt >= _settings.MinimumOffTime;
+               now - stoppedAt >= _settings.MinimumRunTime;
     }
 
     private static ThermostatOutput CreateOutput(

@@ -11,8 +11,7 @@ public sealed class ThermostatEngineTests
         var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
         var engine = new ThermostatEngine(new HvacSettings
         {
-            AbsoluteHumidityCoolingOnThreshold = 9.5,
-            AbsoluteHumidityCoolingOffThreshold = 9.0
+            AbsoluteHumidityCoolingOnThreshold = 9.5
         });
 
         var input = new ThermostatInput
@@ -37,8 +36,7 @@ public sealed class ThermostatEngineTests
         var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
         var engine = new ThermostatEngine(new HvacSettings
         {
-            AbsoluteHumidityCoolingOnThreshold = 9.5,
-            AbsoluteHumidityCoolingOffThreshold = 9.0
+            AbsoluteHumidityCoolingOnThreshold = 9.5
         });
 
         var input = new ThermostatInput
@@ -65,7 +63,6 @@ public sealed class ThermostatEngineTests
         var engine = new ThermostatEngine(new HvacSettings
         {
             AbsoluteHumidityCoolingOnThreshold = 9.5,
-            AbsoluteHumidityCoolingOffThreshold = 9.0,
             MinimumRunTime = TimeSpan.FromMinutes(5)
         });
 
@@ -99,7 +96,6 @@ public sealed class ThermostatEngineTests
         var engine = new ThermostatEngine(new HvacSettings
         {
             AbsoluteHumidityCoolingOnThreshold = 9.5,
-            AbsoluteHumidityCoolingOffThreshold = 9.0,
             MinimumRunTime = TimeSpan.FromMinutes(5)
         });
 
@@ -175,12 +171,12 @@ public sealed class ThermostatEngineTests
     }
 
     [Fact]
-    public void Cooling_WhenRecentlyStopped_DoesNotRestartBeforeMinimumOffTime()
+    public void Cooling_WhenRecentlyStopped_DoesNotRestartBeforeMinimumRunTime()
     {
         var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
         var engine = new ThermostatEngine(new HvacSettings
         {
-            MinimumOffTime = TimeSpan.FromMinutes(5)
+            MinimumRunTime = TimeSpan.FromMinutes(5)
         });
 
         var previousState = ThermostatRuntimeState.Empty with
@@ -313,12 +309,12 @@ public sealed class ThermostatEngineTests
     }
 
     [Fact]
-    public void Heat_WhenRecentlyStopped_DoesNotRestartBeforeMinimumOffTime()
+    public void Heat_WhenRecentlyStopped_DoesNotRestartBeforeMinimumRunTime()
     {
         var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
         var engine = new ThermostatEngine(new HvacSettings
         {
-            MinimumOffTime = TimeSpan.FromMinutes(5)
+            MinimumRunTime = TimeSpan.FromMinutes(5)
         });
 
         var previousState = ThermostatRuntimeState.Empty with
@@ -558,8 +554,7 @@ public sealed class ThermostatEngineTests
         var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
         var engine = new ThermostatEngine(new HvacSettings
         {
-            AbsoluteHumidityCoolingOnThreshold = 9.5,
-            AbsoluteHumidityCoolingOffThreshold = 9.0
+            AbsoluteHumidityCoolingOnThreshold = 9.5
         });
 
         var input = new ThermostatInput
@@ -588,8 +583,7 @@ public sealed class ThermostatEngineTests
         var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
         var engine = new ThermostatEngine(new HvacSettings
         {
-            AbsoluteHumidityCoolingOnThreshold = 9.5,
-            AbsoluteHumidityCoolingOffThreshold = 9.0
+            AbsoluteHumidityCoolingOnThreshold = 9.5
         });
 
         var input = new ThermostatInput
@@ -618,8 +612,7 @@ public sealed class ThermostatEngineTests
         var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
         var engine = new ThermostatEngine(new HvacSettings
         {
-            AbsoluteHumidityCoolingOnThreshold = 9.5,
-            AbsoluteHumidityCoolingOffThreshold = 9.0
+            AbsoluteHumidityCoolingOnThreshold = 9.5
         });
 
         var input = new ThermostatInput
@@ -628,64 +621,6 @@ public sealed class ThermostatEngineTests
             HumidityUpstairs = 40,      // AH below threshold
             CurrentTempFahrDown = 65,
             HumidityDownstairs = 40,    // AH below threshold
-            Mode = HvacMode.Cool,
-            Now = now,
-            LastSensorUpdate = now,
-            LastMotionDetected = now
-        };
-
-        var (output, _) = engine.Evaluate(input, ThermostatRuntimeState.Empty);
-
-        Assert.False(output.Heat);
-        Assert.False(output.Cool);
-        Assert.True(output.Fan);
-    }
-
-    [Fact]
-    public void CoolMode_WhenInsideHumidityIsHighButOutsideAbsoluteHumidityIsBelowLockout_DoesNotTurnOnCooling()
-    {
-        var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
-        var engine = new ThermostatEngine(new HvacSettings
-        {
-            AbsoluteHumidityCoolingOnThreshold = 9.5,
-            AbsoluteHumidityCoolingOffThreshold = 9.0,
-            OutdoorGoodHumidityHighestLevel = 9.0
-        });
-
-        var input = new ThermostatInput
-        {
-            CurrentTempFahrUp = 72,
-            HumidityUpstairs = 50, // inside AH about 9.83
-            OutsideAbsoluteHumidity = 8.9,
-            Mode = HvacMode.Cool,
-            Now = now,
-            LastSensorUpdate = now,
-            LastMotionDetected = now
-        };
-
-        var (output, _) = engine.Evaluate(input, ThermostatRuntimeState.Empty);
-
-        Assert.False(output.Heat);
-        Assert.False(output.Cool);
-        Assert.True(output.Fan);
-    }
-
-    [Fact]
-    public void CoolMode_WhenOutsideIsLessHumid_TurnsOffCooling()
-    {
-        var now = DateTimeOffset.Parse("2026-06-12T12:00:00Z");
-        var engine = new ThermostatEngine(new HvacSettings
-        {
-            AbsoluteHumidityCoolingOnThreshold = 9.5,
-            AbsoluteHumidityCoolingOffThreshold = 9.0,
-            OutdoorGoodHumidityHighestLevel = 9.0
-        });
-
-        var input = new ThermostatInput
-        {
-            CurrentTempFahrUp = 72,
-            HumidityUpstairs = 50, // inside AH about 9.83
-            OutsideAbsoluteHumidity = 9.0,
             Mode = HvacMode.Cool,
             Now = now,
             LastSensorUpdate = now,

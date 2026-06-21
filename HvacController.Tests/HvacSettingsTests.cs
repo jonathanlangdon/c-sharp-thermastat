@@ -22,10 +22,10 @@ public sealed class HvacSettingsTests
         var exception = Assert.Throws<ArgumentOutOfRangeException>(() =>
             new HvacSettings
             {
-                MinimumOffTime = TimeSpan.Zero
+                MinimumRunTime = TimeSpan.Zero
             }.ValidateFixedSettings());
 
-        Assert.Equal("MinimumOffTime", exception.ParamName);
+        Assert.Equal("MinimumRunTime", exception.ParamName);
     }
 
     [Fact]
@@ -40,39 +40,4 @@ public sealed class HvacSettingsTests
         Assert.Equal("SensorTimeout", exception.ParamName);
     }
 
-    [Fact]
-    public void UserCoolingThresholds_WhenOnThresholdIsLessThanOffThreshold_IsInvalid()
-    {
-        var settings = new HvacSettings
-        {
-            AbsoluteHumidityCoolingOnThreshold = 8.5,
-            AbsoluteHumidityCoolingOffThreshold = 9.0
-        };
-
-        Assert.False(settings.HasValidCoolingThresholds());
-    }
-
-    [Fact]
-    public void UserCoolingThresholds_WhenOnThresholdEqualsOffThreshold_IsInvalid()
-    {
-        var settings = new HvacSettings
-        {
-            AbsoluteHumidityCoolingOnThreshold = 9.0,
-            AbsoluteHumidityCoolingOffThreshold = 9.0
-        };
-
-        Assert.False(settings.HasValidCoolingThresholds());
-    }
-
-    [Fact]
-    public void UserCoolingThresholds_WhenOnThresholdIsGreaterThanOffThreshold_IsValid()
-    {
-        var settings = new HvacSettings
-        {
-            AbsoluteHumidityCoolingOnThreshold = 9.5,
-            AbsoluteHumidityCoolingOffThreshold = 9.0
-        };
-
-        Assert.True(settings.HasValidCoolingThresholds());
-    }
 }

@@ -350,6 +350,33 @@ int getTargetHeatWidth() {
   return SAFE_W - MODE_SMALL_W;
 }
 
+String normalizeMode(const String& mode) {
+  if (mode.equalsIgnoreCase("Heat")) {
+    return "Heat";
+  }
+
+  if (mode.equalsIgnoreCase("Cool")) {
+    return "Cool";
+  }
+
+  return "";
+}
+
+bool updateSelectedModeFromStatus() {
+  String statusMode = normalizeMode(latestStatus.mode);
+
+  if (statusMode == "") {
+    return false;
+  }
+
+  if (selectedMode == statusMode) {
+    return false;
+  }
+
+  selectedMode = statusMode;
+  return true;
+}
+
 void drawBottomBar() {
   int barY = SAFE_Y + SAFE_H - BOTTOM_BAR_H;
   int barBottom = SAFE_Y + SAFE_H - 1;
@@ -538,8 +565,18 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
   latestStatus.outsideTemperature = doc["outsideTemperature"] | NAN;
   latestStatus.outsideAbsoluteHumidity = doc["outsideAbsoluteHumidity"] | NAN;
 
-  Serial.println("Parsed HVAC status. Redrawing screen.");
+    bool modeChanged = updateSelectedModeFromStatus();
+
+  Serial.print("Parsed HVAC status. Mode=");
+  Serial.print(latestStatus.mode);
+  Serial.print(" selectedMode=");
+  Serial.println(selectedMode);
+
   drawThermostatScreen();
+
+  if (modeChanged) {
+    animateBottomBarToSelectedMode();
+  }
 }
 
 void handleMqttConnection() {

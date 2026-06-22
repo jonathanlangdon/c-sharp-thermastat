@@ -48,8 +48,6 @@
 #define MODE_ANIMATION_STEPS 14
 #define MODE_ANIMATION_DELAY_MS 16
 
-int customTempAdjustment = 4;
-
 int bottomBarHeatW = SAFE_W - MODE_SMALL_W;
 
 
@@ -829,7 +827,7 @@ bool readSht45() {
     return false;
   }
 
-  upstairsTemperatureF = temperature.temperature * 9.0 / 5.0 + 32 - customTempAdjustment;
+  upstairsTemperatureF = temperature.temperature * 9.0 / 5.0 + 32;
   upstairsRelativeHumidity = humidity.relative_humidity;
 
   Serial.print("SHT45 temp F: ");

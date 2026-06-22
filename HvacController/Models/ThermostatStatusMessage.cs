@@ -17,6 +17,11 @@ public sealed record ThermostatStatusMessage
     public double HeatSetPointDay { get; init; }
     public double HeatSetPointNight { get; init; }
     public double MaxAbsHumSetPoint { get; init; }
+
+    public double UpTempCalibration { get; init; }
+    public double UpRelHumCalibration { get; init; }
+    public double DownTempCalibration { get; init; }
+    public double DownRelHumCalibration { get; init; }
     
     public double? UpstairsTemperature { get; init; }
     public double? UpstairsRelativeHumidity { get; init; }

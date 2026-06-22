@@ -11,7 +11,7 @@ public sealed class ThermostatStatusMessageBuilderTests
         var input = new ThermostatInput
         {
             CurrentTempFahrUp = 72.1,
-            HumidityUpstairs = 50,
+            RelHumidityUpstairs = 50,
             Mode = HvacMode.Cool,
             Now = DateTimeOffset.Parse("2026-06-12T12:00:00Z"),
             LastSensorUpdate = DateTimeOffset.Parse("2026-06-12T12:00:00Z")
@@ -43,7 +43,7 @@ public sealed class ThermostatStatusMessageBuilderTests
         var input = new ThermostatInput
         {
             CurrentTempFahrUp = 72.0,
-            HumidityUpstairs = 50.0,
+            RelHumidityUpstairs = 50.0,
             Mode = HvacMode.Cool,
             Now = DateTimeOffset.Parse("2026-06-12T12:00:00Z"),
             LastSensorUpdate = DateTimeOffset.Parse("2026-06-12T12:00:00Z")
@@ -67,9 +67,9 @@ public sealed class ThermostatStatusMessageBuilderTests
         var input = new ThermostatInput
         {
             CurrentTempFahrUp = 72.0,
-            HumidityUpstairs = 40.0,
+            RelHumidityUpstairs = 40.0,
             CurrentTempFahrDown = 66.4,
-            HumidityDownstairs = 55.2,
+            RelHumidityDownstairs = 55.2,
             Mode = HvacMode.Cool,
             Now = DateTimeOffset.Parse("2026-06-12T12:00:00Z"),
             LastSensorUpdate = DateTimeOffset.Parse("2026-06-12T12:00:00Z")
@@ -93,9 +93,9 @@ public sealed class ThermostatStatusMessageBuilderTests
         var input = new ThermostatInput
         {
             CurrentTempFahrUp = 72.0,
-            HumidityUpstairs = 50.0,
+            RelHumidityUpstairs = 50.0,
             CurrentTempFahrDown = 66.4,
-            HumidityDownstairs = 55.2,
+            RelHumidityDownstairs = 55.2,
             Mode = HvacMode.Cool,
             Now = DateTimeOffset.Parse("2026-06-12T12:00:00Z"),
             LastSensorUpdate = DateTimeOffset.Parse("2026-06-12T12:00:00Z")
@@ -117,7 +117,7 @@ public sealed class ThermostatStatusMessageBuilderTests
         var input = new ThermostatInput
         {
             CurrentTempFahrUp = 72.0,
-            HumidityUpstairs = 50.0,
+            RelHumidityUpstairs = 50.0,
             OutsideAbsoluteHumidity = 9.4,
             Mode = HvacMode.Cool,
             Now = DateTimeOffset.Parse("2026-06-12T12:00:00Z"),

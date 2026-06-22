@@ -31,12 +31,17 @@ public static class ThermostatStatusMessageBuilder
             HeatSetPointNight = input.NightHeatSetPoint,
             MaxAbsHumSetPoint = input.AbsoluteHumidityCoolingOnThreshold,
 
+            UpTempCalibration = input.UpTempCalibration,
+            UpRelHumCalibration = input.UpRelHumCalibration,
+            DownTempCalibration = input.DownTempCalibration,
+            DownRelHumCalibration = input.DownRelHumCalibration,
+
             UpstairsTemperature = input.CurrentTempFahrUp,
-            UpstairsRelativeHumidity = input.HumidityUpstairs,
+            UpstairsRelativeHumidity = input.RelHumidityUpstairs,
             UpstairsAbsoluteHumidity = input.AbsoluteHumidityUpstairs,
 
             DownstairsTemperature = input.CurrentTempFahrDown,
-            DownstairsRelativeHumidity = input.HumidityDownstairs,
+            DownstairsRelativeHumidity = input.RelHumidityDownstairs,
             DownstairsAbsoluteHumidity = input.AbsoluteHumidityDownstairs,
 
             ControlAbsoluteHumidity = input.ControlHumidity,

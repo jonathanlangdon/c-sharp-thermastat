@@ -492,7 +492,7 @@ public sealed class ThermostatEngineTests
             dayHeatSetPoint: 70.5,
             nightHeatSetPoint: 65.0) with
         {
-            HumidityUpstairs = null,
+            RelHumidityUpstairs = null,
             LastMotionDetected = now
         };
 
@@ -518,7 +518,7 @@ public sealed class ThermostatEngineTests
             maxAbsHumSetPoint: 9.5) with
         {
             CurrentTempFahrDown = 65,
-            HumidityDownstairs = 40,
+            RelHumidityDownstairs = 40,
             LastMotionDetected = now
         };
 
@@ -543,7 +543,7 @@ public sealed class ThermostatEngineTests
             maxAbsHumSetPoint: 9.5) with
         {
             CurrentTempFahrDown = 72,
-            HumidityDownstairs = 55,
+            RelHumidityDownstairs = 55,
             LastMotionDetected = now
         };
 
@@ -568,7 +568,7 @@ public sealed class ThermostatEngineTests
             maxAbsHumSetPoint: 9.5) with
         {
             CurrentTempFahrDown = 65,
-            HumidityDownstairs = 40,
+            RelHumidityDownstairs = 40,
             LastMotionDetected = now
         };
 
@@ -589,7 +589,7 @@ public sealed class ThermostatEngineTests
         return new ThermostatInput
         {
             CurrentTempFahrUp = temperatureFahr,
-            HumidityUpstairs = relativeHumidity,
+            RelHumidityUpstairs = relativeHumidity,
             Mode = HvacMode.Cool,
             OutsideAbsoluteHumidity = outsideAbsoluteHumidity,
             AbsoluteHumidityCoolingOnThreshold = maxAbsHumSetPoint,
@@ -610,7 +610,7 @@ public sealed class ThermostatEngineTests
         return new ThermostatInput
         {
             CurrentTempFahrUp = temperatureFahr,
-            HumidityUpstairs = relativeHumidity,
+            RelHumidityUpstairs = relativeHumidity,
             Mode = HvacMode.Heat,
             DayHeatSetPoint = dayHeatSetPoint,
             NightHeatSetPoint = nightHeatSetPoint,

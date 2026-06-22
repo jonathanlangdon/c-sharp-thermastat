@@ -7,28 +7,33 @@ public sealed record ThermostatInput
     public double? CurrentTempFahrUp { get; init; }
     public double? CurrentTempFahrDown { get; init; }
 
-    public double? HumidityUpstairs { get; init; }
-    public double? HumidityDownstairs { get; init; }
+    public double? RelHumidityUpstairs { get; init; }
+    public double? RelHumidityDownstairs { get; init; }
 
     public double? OutsideAbsoluteHumidity { get; init; }
 
-    public double DayHeatSetPoint { get; init; } = 70.5; // default value if not set
-    public double NightHeatSetPoint { get; init; } = 65.0; // default value if not set
-    public double AbsoluteHumidityCoolingOnThreshold { get; init; } = 10.8; // default value if not set
+    public double DayHeatSetPoint { get; init; }
+    public double NightHeatSetPoint { get; init; }
+    public double AbsoluteHumidityCoolingOnThreshold { get; init; }
+
+    public double UpTempCalibration { get; init; }
+    public double UpRelHumCalibration { get; init; }
+    public double DownTempCalibration { get; init; }
+    public double DownRelHumCalibration { get; init; }
 
     public double? AbsoluteHumidityUpstairs =>
-        CurrentTempFahrUp is null || HumidityUpstairs is null
+        CurrentTempFahrUp is null || RelHumidityUpstairs is null
             ? null
             : AbsoluteHumidityCalculator.CalculateGramsPerCubicMeterFromFahrenheit(
                 CurrentTempFahrUp.Value,
-                HumidityUpstairs.Value);
+                RelHumidityUpstairs.Value);
 
     public double? AbsoluteHumidityDownstairs =>
-        CurrentTempFahrDown is null || HumidityDownstairs is null
+        CurrentTempFahrDown is null || RelHumidityDownstairs is null
             ? null
             : AbsoluteHumidityCalculator.CalculateGramsPerCubicMeterFromFahrenheit(
                 CurrentTempFahrDown.Value,
-                HumidityDownstairs.Value) - 1; // custom adjustment as of 2026-06-21
+                RelHumidityDownstairs.Value) - 1; // custom adjustment as of 2026-06-21
 
     public double? ControlHumidity
     {

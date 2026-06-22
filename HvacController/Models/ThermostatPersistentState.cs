@@ -9,7 +9,11 @@ public sealed record ThermostatPersistentState
 
     public double HeatSetPointDay { get; init; } = 70.5;
     public double HeatSetPointNight { get; init; } = 65.0;
-    public double MaxAbsHumSetPoint { get; init; } = 10.8;
+    public double MaxAbsHumSetPoint { get; init; } = 10.5;
+    public double UpTempCalibration { get; init; } = 4.0;
+    public double UpRelHumCalibration { get; init; } = 0.0;
+    public double DownTempCalibration { get; init; } = 0.0;
+    public double DownRelHumCalibration { get; init; } = -2.0;
 
     public bool WasHeating { get; init; }
     public bool WasCooling { get; init; }
@@ -45,6 +49,11 @@ public sealed record ThermostatPersistentState
             HeatSetPointDay = input.DayHeatSetPoint,
             HeatSetPointNight = input.NightHeatSetPoint,
             MaxAbsHumSetPoint = input.AbsoluteHumidityCoolingOnThreshold,
+
+            UpTempCalibration = input.UpTempCalibration,
+            UpRelHumCalibration = input.UpRelHumCalibration,
+            DownTempCalibration = input.DownTempCalibration,
+            DownRelHumCalibration = input.DownRelHumCalibration,
 
             WasHeating = runtimeState.WasHeating,
             WasCooling = runtimeState.WasCooling,

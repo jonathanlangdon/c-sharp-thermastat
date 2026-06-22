@@ -22,8 +22,8 @@ public sealed class ThermostatInputBuilder
             CurrentTempFahrUp = _indoorState.CurrentTempFahrUp,
             CurrentTempFahrDown = _indoorState.CurrentTempFahrDown,
 
-            HumidityUpstairs = _indoorState.HumidityUpstairs,
-            HumidityDownstairs = _indoorState.HumidityDownstairs,
+            RelHumidityUpstairs = _indoorState.HumidityUpstairs,
+            RelHumidityDownstairs = _indoorState.HumidityDownstairs,
 
             OutsideAbsoluteHumidity = _outsideState.OutsideAbsoluteHumidity,
 

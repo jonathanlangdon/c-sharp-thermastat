@@ -40,6 +40,18 @@ public sealed class ThermostatCycleRunner
 
         var input = rawInput with
         {
+            CurrentTempFahrUp =
+                ApplyCalibration(rawInput.CurrentTempFahrUp, persisted.UpTempCalibration),
+
+            RelHumidityUpstairs =
+                ApplyRelativeHumidityCalibration(rawInput.RelHumidityUpstairs, persisted.UpRelHumCalibration),
+
+            CurrentTempFahrDown =
+                ApplyCalibration(rawInput.CurrentTempFahrDown, persisted.DownTempCalibration),
+
+            RelHumidityDownstairs =
+                ApplyRelativeHumidityCalibration(rawInput.RelHumidityDownstairs, persisted.DownRelHumCalibration),
+
             LastSensorUpdate =
                 rawInput.LastSensorUpdate ?? persisted.LastSensorUpdate,
 
@@ -50,7 +62,12 @@ public sealed class ThermostatCycleRunner
 
             DayHeatSetPoint = persisted.HeatSetPointDay,
             NightHeatSetPoint = persisted.HeatSetPointNight,
-            AbsoluteHumidityCoolingOnThreshold = persisted.MaxAbsHumSetPoint
+            AbsoluteHumidityCoolingOnThreshold = persisted.MaxAbsHumSetPoint,
+
+            UpTempCalibration = persisted.UpTempCalibration,
+            UpRelHumCalibration = persisted.UpRelHumCalibration,
+            DownTempCalibration = persisted.DownTempCalibration,
+            DownRelHumCalibration = persisted.DownRelHumCalibration
         };
 
         var (output, newState) = _engine.Evaluate(
@@ -82,4 +99,23 @@ public sealed class ThermostatCycleRunner
 
         return output;
     }
+
+    private static double? ApplyCalibration(
+        double? value,
+        double calibration)
+    {
+        return value is null
+            ? null
+            : value.Value + calibration;
+    }
+
+    private static double? ApplyRelativeHumidityCalibration(
+        double? value,
+        double calibration)
+    {
+        return value is null
+            ? null
+            : Math.Clamp(value.Value + calibration, 0.0, 100.0);
+    }
+
 }

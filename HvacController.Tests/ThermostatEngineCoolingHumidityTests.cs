@@ -86,7 +86,7 @@ public sealed class ThermostatEngineCoolingHumidityTests
         var input = new ThermostatInput
         {
             CurrentTempFahrUp = 72.0,
-            HumidityUpstairs = null,
+            RelHumidityUpstairs = null,
             Mode = HvacMode.Cool,
             OutsideAbsoluteHumidity = 12.0,
             AbsoluteHumidityCoolingOnThreshold = 10.8,
@@ -403,7 +403,7 @@ public sealed class ThermostatEngineCoolingHumidityTests
         return new ThermostatInput
         {
             CurrentTempFahrUp = temperatureFahr,
-            HumidityUpstairs = relativeHumidity,
+            RelHumidityUpstairs = relativeHumidity,
             Mode = HvacMode.Cool,
             OutsideAbsoluteHumidity = outsideAbsoluteHumidity,
             AbsoluteHumidityCoolingOnThreshold = maxAbsHumSetPoint,
@@ -426,7 +426,7 @@ public sealed class ThermostatEngineCoolingHumidityTests
         return new ThermostatInput
         {
             CurrentTempFahrUp = insideTemperatureFahr,
-            HumidityUpstairs = RelativeHumidityForAbsoluteHumidity(
+            RelHumidityUpstairs = RelativeHumidityForAbsoluteHumidity(
                 insideTemperatureFahr,
                 insideAbsoluteHumidity),
             Mode = HvacMode.Cool,

@@ -31,8 +31,8 @@ public sealed class ThermostatInputBuilderTests
 
         Assert.Equal(72.1, input.CurrentTempFahrUp);
         Assert.Equal(66.4, input.CurrentTempFahrDown);
-        Assert.Equal(48.5, input.HumidityUpstairs);
-        Assert.Equal(55.2, input.HumidityDownstairs);
+        Assert.Equal(48.5, input.RelHumidityUpstairs);
+        Assert.Equal(55.2, input.RelHumidityDownstairs);
         Assert.Equal(now.AddSeconds(-8), input.LastSensorUpdate);
         Assert.Equal(now.AddMinutes(-30), input.LastMotionDetected);
         Assert.Equal(HvacMode.Cool, input.Mode);

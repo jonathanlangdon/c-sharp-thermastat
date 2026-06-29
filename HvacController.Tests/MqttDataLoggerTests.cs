@@ -41,7 +41,33 @@ public sealed class MqttDataLoggerTests
 
         await logger.HandleMessageAsync(
             MqttDataLogger.HvacStatusTopic,
-            "{\"heat\":false,\"cool\":true,\"fan\":true,\"reason\":\"Manual test\",\"mode\":\"Cool\",\"upstairsTemperature\":76.1,\"upstairsAbsoluteHumidity\":11.19,\"downstairsTemperature\":72.0,\"downstairsAbsoluteHumidity\":9.3,\"outsideTemperature\":80.0,\"outsideAbsoluteHumidity\":9.23}",
+            "{" +
+            "\"now\":\"2026-06-16T14:32:10-04:00\"," +
+            "\"heat\":false," +
+            "\"cool\":true," +
+            "\"fan\":true," +
+            "\"reason\":\"Manual test\"," +
+            "\"mode\":\"Cool\"," +
+            "\"heatSetPointFahr\":65," +
+            "\"heatSetPointDay\":70.5," +
+            "\"heatSetPointNight\":65," +
+            "\"maxAbsHumSetPoint\":10.5," +
+            "\"upTempCalibration\":-4.5," +
+            "\"upRelHumCalibration\":3," +
+            "\"downTempCalibration\":-0.5," +
+            "\"downRelHumCalibration\":-2," +
+            "\"upstairsTemperature\":76.1," +
+            "\"upstairsRelativeHumidity\":55.2," +
+            "\"upstairsAbsoluteHumidity\":11.19," +
+            "\"downstairsTemperature\":72.0," +
+            "\"downstairsRelativeHumidity\":50.1," +
+            "\"downstairsAbsoluteHumidity\":9.3," +
+            "\"controlAbsoluteHumidity\":11.19," +
+            "\"outsideTemperature\":80.0," +
+            "\"outsideAbsoluteHumidity\":9.23," +
+            "\"wasHeating\":false," +
+            "\"wasCooling\":true" +
+            "}",
             timestamp,
             CancellationToken.None);
 
@@ -50,7 +76,17 @@ public sealed class MqttDataLoggerTests
         Assert.Equal("hvac-status.csv", entry.RelativePath);
         Assert.Equal(HvacStatusCsvFormatter.Header, entry.Header);
         Assert.Equal(
-            "2026-06-16T14:32:10.0000000-04:00,false,true,true,Cool,76.1,11.19,72.0,9.30,80.0,9.23,Manual test",
+            "2026-06-16T14:32:10.0000000-04:00," +
+            "2026-06-16T14:32:10.0000000-04:00," +
+            ",,," +
+            "false,true,true,Manual test,Cool," +
+            "65.0,70.5,65.0,10.50," +
+            "-4.5,3.0,-0.5,-2.0," +
+            "76.1,55.2,11.19," +
+            "72.0,50.1,9.30," +
+            "11.19,80.0,9.23," +
+            "false,true" +
+            ",,,,",
             entry.Line);
     }
 

@@ -136,8 +136,12 @@ public sealed class ThermostatEngine
             return true;
         }
 
+        double TargetHumidity = input.AbsoluteHumidityCoolingOnThreshold;
+        if (input.CurrentTempFahrUp >= 72) TargetHumidity = _settings.AbsHumidityTarget72;
+        else if (input.CurrentTempFahrUp >= 71) TargetHumidity = _settings.AbsHumidityTarget71;
+
         return MinimumOffSatisfied(input.Now, state.LastCoolStopped) &&
-            input.ControlHumidity >= input.AbsoluteHumidityCoolingOnThreshold;
+            input.ControlHumidity >= TargetHumidity;
     }
 
     private bool MinimumRunSatisfied(

@@ -10,6 +10,7 @@ public sealed record ThermostatPersistentState
     public double HeatSetPointDay { get; init; } = 70.5;
     public double HeatSetPointNight { get; init; } = 65.0;
     public double MaxAbsHumSetPoint { get; init; } = 10.5;
+    // only if less than 71,... otherwise 10 for 71-72 and 9 for >= 72
     public double UpTempCalibration { get; init; } = 4.0;
     public double UpRelHumCalibration { get; init; } = 0.0;
     public double DownTempCalibration { get; init; } = 0.0;

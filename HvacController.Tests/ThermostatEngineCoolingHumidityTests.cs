@@ -357,7 +357,7 @@ public sealed class ThermostatEngineCoolingHumidityTests
             input,
             ThermostatRuntimeState.Empty);
 
-        Assert.False(output.Cool);
+        Assert.True(output.Cool);
         Assert.False(output.Heat);
         Assert.True(output.Fan);
         Assert.Equal("Everything Normal", output.Reason);

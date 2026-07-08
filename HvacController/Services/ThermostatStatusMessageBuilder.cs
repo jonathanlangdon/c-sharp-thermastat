@@ -29,7 +29,7 @@ public static class ThermostatStatusMessageBuilder
             HeatSetPointFahr = output.HeatSetPointFahr,
             HeatSetPointDay = input.DayHeatSetPoint,
             HeatSetPointNight = input.NightHeatSetPoint,
-            MaxAbsHumSetPoint = input.AbsoluteHumidityCoolingOnThreshold,
+            MaxAbsHumSetPoint = output.MaxAbsHumSetPoint,
 
             UpTempCalibration = input.UpTempCalibration,
             UpRelHumCalibration = input.UpRelHumCalibration,

@@ -550,7 +550,7 @@ public sealed class ThermostatEngineTests
         var (output, _) = engine.Evaluate(input, ThermostatRuntimeState.Empty);
 
         Assert.False(output.Heat);
-        Assert.True(output.Cool);
+        Assert.False(output.Cool);
         Assert.True(output.Fan);
     }
 

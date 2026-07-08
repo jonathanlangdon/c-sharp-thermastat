@@ -52,6 +52,7 @@ public sealed class ThermostatEngine
                     cool: false,
                     fan: true,
                     heatSetPoint,
+                    maxAbsHumSetPoint: GetCoolingHumidityTarget(input),
                     NormalReason)),
 
             HvacMode.Cool when input.OutsideAbsoluteHumidity is null => Transition(
@@ -62,6 +63,7 @@ public sealed class ThermostatEngine
                     cool: false,
                     fan: true,
                     heatSetPoint,
+                    maxAbsHumSetPoint: GetCoolingHumidityTarget(input),
                     OutdoorHumidityUnavailableReason)),
 
             HvacMode.Cool => Transition(
@@ -72,6 +74,7 @@ public sealed class ThermostatEngine
                     cool: ShouldCool(input, previousState),
                     fan: true,
                     heatSetPoint,
+                    maxAbsHumSetPoint: GetCoolingHumidityTarget(input),
                     NormalReason)),
 
             _ => SafeOff(previousState, input.Now, $"Unsupported HVAC mode: {input.Mode}")
@@ -127,6 +130,19 @@ public sealed class ThermostatEngine
                temp <= heatSetPoint - _settings.TemperatureDifferentialF;
     }
 
+    private double GetCoolingHumidityTarget(ThermostatInput input)
+    {
+        if (input.CurrentTempFahrUp >= 72)
+        {
+            return _settings.AbsHumidityTarget72;
+        }
+        if (input.CurrentTempFahrUp >= 71)
+        {
+            return _settings.AbsHumidityTarget71;
+        }
+        return _settings.AbsHumidityTarget70;
+    }
+
     private bool ShouldCool(
         ThermostatInput input,
         ThermostatRuntimeState state)
@@ -136,12 +152,10 @@ public sealed class ThermostatEngine
             return true;
         }
 
-        double TargetHumidity = input.AbsoluteHumidityCoolingOnThreshold;
-        if (input.CurrentTempFahrUp >= 72) TargetHumidity = _settings.AbsHumidityTarget72;
-        else if (input.CurrentTempFahrUp >= 71) TargetHumidity = _settings.AbsHumidityTarget71;
+        var targetHumidity = GetCoolingHumidityTarget(input);
 
         return MinimumOffSatisfied(input.Now, state.LastCoolStopped) &&
-            input.ControlHumidity >= TargetHumidity;
+            input.ControlHumidity >= targetHumidity;
     }
 
     private bool MinimumRunSatisfied(
@@ -165,6 +179,7 @@ public sealed class ThermostatEngine
         bool cool,
         bool fan,
         double? heatSetPoint,
+        double maxAbsHumSetPoint,
         string reason)
     {
         return new ThermostatOutput
@@ -173,6 +188,7 @@ public sealed class ThermostatEngine
             Cool = cool,
             Fan = fan,
             HeatSetPointFahr = heatSetPoint,
+            MaxAbsHumSetPoint = maxAbsHumSetPoint,
             Reason = reason
         };
     }
@@ -226,4 +242,5 @@ public sealed class ThermostatEngine
 
         return (output, state);
     }
+
 }

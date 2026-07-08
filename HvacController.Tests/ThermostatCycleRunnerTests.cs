@@ -13,7 +13,7 @@ public sealed class ThermostatCycleRunnerTests
         var indoorState = new IndoorSensorState();
         indoorState.UpdateUpstairsSensor(
             temperatureFahr: 72,
-            relativeHumidity: 60,
+            relativeHumidity: 65,
             updatedAt: now);
         indoorState.SetMode(HvacMode.Cool);
 

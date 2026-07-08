@@ -459,4 +459,44 @@ public sealed class ThermostatEngineCoolingHumidityTests
             2026, 6, 16, 14, 0, 0,
             TimeSpan.FromHours(-4));
     }
+
+    [Theory]
+    [InlineData(72.0, 9.0)]
+    [InlineData(72.1, 9.0)]
+    [InlineData(71.0, 10.0)]
+    [InlineData(71.9, 10.0)]
+    [InlineData(70.9, 11.0)]
+    [InlineData(68.0, 11.0)]
+    public void Evaluate_SetsCoolingHumidityTargetBasedOnUpstairsTemperature(
+        double upstairsTemperature,
+        double expectedTarget)
+    {
+        var now = TestTime();
+
+        var engine = new ThermostatEngine(new HvacSettings
+        {
+            AbsHumidityTarget72 = 9.0,
+            AbsHumidityTarget71 = 10.0,
+            AbsHumidityTarget70 = 11.0
+        });
+
+        var input = new ThermostatInput
+        {
+            CurrentTempFahrUp = upstairsTemperature,
+            RelHumidityUpstairs = 60.0,
+            Mode = HvacMode.Cool,
+            OutsideAbsoluteHumidity = 12.0,
+            DayHeatSetPoint = 70.5,
+            NightHeatSetPoint = 65.0,
+            Now = now,
+            LastSensorUpdate = now
+        };
+
+        var (output, _) = engine.Evaluate(
+            input,
+            ThermostatRuntimeState.Empty);
+
+        Assert.Equal(expectedTarget, output.MaxAbsHumSetPoint);
+    }
+
 }

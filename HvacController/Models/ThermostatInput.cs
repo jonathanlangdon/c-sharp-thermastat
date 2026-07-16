@@ -12,6 +12,8 @@ public sealed record ThermostatInput
 
     public double? OutsideAbsoluteHumidity { get; init; }
 
+    public DateTime CurrentLocalTime { get; set; } = DateTime.Now;
+
     public double DayHeatSetPoint { get; init; }
     public double NightHeatSetPoint { get; init; }
     public double AbsoluteHumidityCoolingOnThreshold { get; init; }

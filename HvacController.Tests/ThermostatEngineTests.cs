@@ -579,6 +579,28 @@ public sealed class ThermostatEngineTests
         Assert.True(output.Fan);
     }
 
+    [Theory]
+    [InlineData("2026-06-01T13:59:59", false)]
+    [InlineData("2026-06-01T14:00:00", true)]
+    [InlineData("2026-06-01T18:59:59", true)]
+    [InlineData("2026-06-01T19:00:00", false)]
+    [InlineData("2026-05-31T15:00:00", false)]
+    [InlineData("2026-06-01T15:00:00", true)]
+    [InlineData("2026-09-30T15:00:00", true)]
+    [InlineData("2026-10-01T15:00:00", false)]
+    [InlineData("2026-07-11T15:00:00", false)] // Saturday
+    [InlineData("2026-07-12T15:00:00", false)] // Sunday
+    public void IsHighDemandPricingWindow_ReturnsExpectedResult(
+        string currentLocalTimeValue,
+        bool expected)
+    {
+        var currentLocalTime = DateTime.Parse(currentLocalTimeValue);
+
+        var result = ThermostatEngine.IsHighDemandPricingWindow(currentLocalTime);
+
+        Assert.Equal(expected, result);
+    }
+
     private static ThermostatInput CoolInput(
         DateTimeOffset now,
         double temperatureFahr,

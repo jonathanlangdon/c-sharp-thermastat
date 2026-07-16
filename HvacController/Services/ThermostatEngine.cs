@@ -132,15 +132,41 @@ public sealed class ThermostatEngine
 
     private double GetCoolingHumidityTarget(ThermostatInput input)
     {
+        if (IsHighDemandPricingWindow(input.Now.LocalDateTime))
+        {
+            return _settings.AbsHumidityTarget70;
+        }
+
         if (input.CurrentTempFahrUp >= 72)
         {
             return _settings.AbsHumidityTarget72;
         }
+
         if (input.CurrentTempFahrUp >= 71)
         {
             return _settings.AbsHumidityTarget71;
         }
+
         return _settings.AbsHumidityTarget70;
+    }
+
+    // High-demand pricing ($0.245/kWh) occurs from June 1 through September 30 on weekdays from 2 p.m. to 7 p.m.
+
+    internal static bool IsHighDemandPricingWindow(DateTime currentLocalTime)
+    {
+        var isHighDemandSeason =
+            currentLocalTime.Month >= 6 &&
+            currentLocalTime.Month <= 9;
+
+        var isWeekday =
+            currentLocalTime.DayOfWeek != DayOfWeek.Saturday &&
+            currentLocalTime.DayOfWeek != DayOfWeek.Sunday;
+
+        var isHighDemandTime =
+            currentLocalTime.TimeOfDay >= TimeSpan.FromHours(14) &&
+            currentLocalTime.TimeOfDay < TimeSpan.FromHours(19);
+
+        return isHighDemandSeason && isWeekday && isHighDemandTime;
     }
 
     private bool ShouldCool(

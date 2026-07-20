@@ -66,7 +66,9 @@ public sealed class MqttDataLoggerTests
             "\"outsideTemperature\":80.0," +
             "\"outsideAbsoluteHumidity\":9.23," +
             "\"wasHeating\":false," +
-            "\"wasCooling\":true" +
+            "\"wasCooling\":true," +
+            "\"coolHoursToday\":2.35," +
+            "\"heatHoursToday\":0.25" +
             "}",
             timestamp,
             CancellationToken.None);
@@ -86,7 +88,8 @@ public sealed class MqttDataLoggerTests
             "72.0,50.1,9.30," +
             "11.19,80.0,9.23," +
             "false,true" +
-            ",,,,",
+            ",,,,," +
+            "2.35,0.25",
             entry.Line);
     }
 

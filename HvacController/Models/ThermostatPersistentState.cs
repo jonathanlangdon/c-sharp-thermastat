@@ -19,10 +19,71 @@ public sealed record ThermostatPersistentState
     public bool WasHeating { get; init; }
     public bool WasCooling { get; init; }
 
+    public DateOnly RuntimeDate { get; init; }
+    public double CoolHoursToday { get; init; }
+    public double HeatHoursToday { get; init; }
+    public DateTimeOffset? LastRuntimeUpdated { get; init; }
+
     public DateTimeOffset? LastHeatStarted { get; init; }
     public DateTimeOffset? LastHeatStopped { get; init; }
     public DateTimeOffset? LastCoolStarted { get; init; }
     public DateTimeOffset? LastCoolStopped { get; init; }
+
+    public ThermostatPersistentState UpdateRuntimeTotals(
+    DateTimeOffset now,
+    ThermostatRuntimeState previousRuntimeState)
+    {
+        var today = DateOnly.FromDateTime(now.LocalDateTime);
+
+        var coolHoursToday = RuntimeDate == today
+            ? CoolHoursToday
+            : 0.0;
+
+        var heatHoursToday = RuntimeDate == today
+            ? HeatHoursToday
+            : 0.0;
+
+        if (LastRuntimeUpdated is not null &&
+            now > LastRuntimeUpdated.Value)
+        {
+            var elapsed = now - LastRuntimeUpdated.Value;
+
+            // Prevent a reboot/service outage from adding several fake hours.
+            if (elapsed <= TimeSpan.FromMinutes(2))
+            {
+                var todayStart = new DateTimeOffset(
+                    today.ToDateTime(TimeOnly.MinValue),
+                    now.Offset);
+
+                var start = LastRuntimeUpdated.Value > todayStart
+                    ? LastRuntimeUpdated.Value
+                    : todayStart;
+
+                if (now > start)
+                {
+                    var elapsedHours = (now - start).TotalHours;
+
+                    if (previousRuntimeState.WasCooling)
+                    {
+                        coolHoursToday += elapsedHours;
+                    }
+
+                    if (previousRuntimeState.WasHeating)
+                    {
+                        heatHoursToday += elapsedHours;
+                    }
+                }
+            }
+        }
+
+        return this with
+        {
+            RuntimeDate = today,
+            CoolHoursToday = coolHoursToday,
+            HeatHoursToday = heatHoursToday,
+            LastRuntimeUpdated = now
+        };
+    }
 
     public ThermostatRuntimeState ToRuntimeState()
     {

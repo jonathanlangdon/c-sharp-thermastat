@@ -13,7 +13,7 @@ public static class HvacStatusCsvFormatter
         "upstairsTemperature,upstairsRelativeHumidity,upstairsAbsoluteHumidity," +
         "downstairsTemperature,downstairsRelativeHumidity,downstairsAbsoluteHumidity," +
         "controlAbsoluteHumidity,outsideTemperature,outsideAbsoluteHumidity," +
-        "wasHeating,wasCooling,lastHeatStarted,lastHeatStopped,lastCoolStarted,lastCoolStopped";
+        "wasHeating,wasCooling,lastHeatStarted,lastHeatStopped,lastCoolStarted,lastCoolStopped,coolHoursToday,heatHoursToday";
 
     public static string Format(
         DateTimeOffset timestamp,
@@ -60,7 +60,9 @@ public static class HvacStatusCsvFormatter
             FormatDateTime(message.LastHeatStarted),
             FormatDateTime(message.LastHeatStopped),
             FormatDateTime(message.LastCoolStarted),
-            FormatDateTime(message.LastCoolStopped));
+            FormatDateTime(message.LastCoolStopped),
+            FormatDouble(message.CoolHoursToday, "0.00"),
+            FormatDouble(message.HeatHoursToday, "0.00"));
     }
 
     private static string FormatBool(bool value)

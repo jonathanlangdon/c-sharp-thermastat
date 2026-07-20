@@ -36,6 +36,7 @@ public sealed class ThermostatCycleRunner
         CancellationToken cancellationToken)
     {
         var persisted = _persistentStateStore.Load();
+        var persistedWithRuntime = persisted.UpdateRuntimeTotals(now, _state);
         var rawInput = _inputBuilder.Build(now);
 
         var input = rawInput with
@@ -76,10 +77,17 @@ public sealed class ThermostatCycleRunner
 
         _state = newState;
 
-        _persistentStateStore.Save(
-            ThermostatPersistentState.From(
-                input,
-                _state));
+        var stateToSave = ThermostatPersistentState.From(
+            input,
+            _state) with
+        {
+            RuntimeDate = persistedWithRuntime.RuntimeDate,
+            CoolHoursToday = persistedWithRuntime.CoolHoursToday,
+            HeatHoursToday = persistedWithRuntime.HeatHoursToday,
+            LastRuntimeUpdated = persistedWithRuntime.LastRuntimeUpdated
+        };
+
+        _persistentStateStore.Save(stateToSave);
 
         _relays.SetRelays(
             heat: output.Heat,
@@ -91,7 +99,10 @@ public sealed class ThermostatCycleRunner
             output,
             _state,
             _outsideWeatherState.OutsideTemperature,
-            _outsideWeatherState.LastUpdated);
+            _outsideWeatherState.LastUpdated,
+            stateToSave.CoolHoursToday,
+            stateToSave.HeatHoursToday);
+        
 
         await _statusPublisher.PublishAsync(
             statusMessage,

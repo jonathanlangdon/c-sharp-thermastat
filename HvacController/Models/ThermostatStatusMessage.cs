@@ -38,6 +38,10 @@ public sealed record ThermostatStatusMessage
 
     public bool WasHeating { get; init; }
     public bool WasCooling { get; init; }
+
+    public double CoolHoursToday { get; init; }
+    public double HeatHoursToday { get; init; }
+
     public DateTimeOffset? LastHeatStarted { get; init; }
     public DateTimeOffset? LastHeatStopped { get; init; }
     public DateTimeOffset? LastCoolStarted { get; init; }

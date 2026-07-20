@@ -10,7 +10,9 @@ public static class ThermostatStatusMessageBuilder
         ThermostatOutput output,
         ThermostatRuntimeState runtimeState,
         double? outsideTemperature = null,
-        DateTimeOffset? outsideWeatherUpdatedAt = null)
+        DateTimeOffset? outsideWeatherUpdatedAt = null,
+        double coolHoursToday = 0,
+        double heatHoursToday = 0)
     {
         return new ThermostatStatusMessage
         {       
@@ -48,13 +50,15 @@ public static class ThermostatStatusMessageBuilder
 
             OutsideTemperature = outsideTemperature,
             OutsideAbsoluteHumidity = input.OutsideAbsoluteHumidity,
-
+            
             WasHeating = runtimeState.WasHeating,
             WasCooling = runtimeState.WasCooling,
             LastHeatStarted = runtimeState.LastHeatStarted,
             LastHeatStopped = runtimeState.LastHeatStopped,
             LastCoolStarted = runtimeState.LastCoolStarted,
             LastCoolStopped = runtimeState.LastCoolStopped,
+            CoolHoursToday = Math.Round(coolHoursToday, 2),
+            HeatHoursToday = Math.Round(heatHoursToday, 2),
         };
     }
 }

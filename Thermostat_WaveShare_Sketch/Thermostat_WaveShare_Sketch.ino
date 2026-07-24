@@ -226,6 +226,22 @@ String formatOneDecimal(double value) {
   return String(value, 1);
 }
 
+String currentActivityText() {
+  if (latestStatus.heat) {
+    return "Currently heating";
+  }
+
+  if (latestStatus.cool) {
+    return "Currently cooling";
+  }
+
+  if (latestStatus.fan) {
+    return "Currently fanning";
+  }
+
+  return "Currently off";
+}
+
 void getBounds(
   const char* text,
   const GFXfont* font,
@@ -344,6 +360,17 @@ void drawHumidityPanel() {
   String down = "Down: ";
   down += formatOneDecimal(latestStatus.downstairsAbsoluteHumidity);
   printAtString(x, y + 90, down);
+}
+
+void drawCurrentActivity() {
+  int x = SAFE_X + 268;
+  int y = SAFE_Y + 170;
+
+  setFontSmall(HVAC_TEXT);
+
+  String activity = currentActivityText();
+
+  printAtString(x, y, activity);
 }
 
 int getTargetHeatWidth() {
@@ -500,6 +527,7 @@ void drawThermostatScreen() {
   drawTopBar();
   drawLargeTemperature();
   drawHumidityPanel();
+  drawCurrentActivity();
   drawBottomBar();
 
   gfx->flush();

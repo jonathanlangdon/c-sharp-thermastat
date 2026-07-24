@@ -3,9 +3,9 @@ namespace HvacController.Models;
 public sealed record HvacSettings
 {
     public double TemperatureDifferentialF { get; init; } = 0.5;
-    public double AbsHumidityTarget72 { get; init; } = 9.0;
-    public double AbsHumidityTarget71 { get; init; } = 10.0;
-    public double AbsHumidityTarget70 { get; init; } = 11.0;
+    public double HumidityTargetIdeal { get; init; } = 9.0;
+    public double HumidityTargetGood { get; init; } = 10.0;
+    public double HumidityTargetFair { get; init; } = 11.0;
 
     public TimeOnly NightHeatStart { get; init; } = new(19, 0);
     public TimeOnly NightHeatEnd { get; init; } = new(6, 0);

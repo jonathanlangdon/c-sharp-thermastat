@@ -448,9 +448,9 @@ public sealed class ThermostatEngineCoolingHumidityTests
 
         var engine = new ThermostatEngine(new HvacSettings
         {
-            AbsHumidityTarget72 = 9.0,
-            AbsHumidityTarget71 = 10.0,
-            AbsHumidityTarget70 = 11.0
+            HumidityTargetIdeal = 9.0,
+            HumidityTargetGood = 10.0,
+            HumidityTargetFair = 11.0
         });
 
         var input = new ThermostatInput
@@ -508,9 +508,9 @@ public sealed class ThermostatEngineCoolingHumidityTests
 
         var engine = new ThermostatEngine(new HvacSettings
         {
-            AbsHumidityTarget72 = 9.0,
-            AbsHumidityTarget71 = 10.0,
-            AbsHumidityTarget70 = 11.0
+            HumidityTargetIdeal = 9.0,
+            HumidityTargetGood = 10.0,
+            HumidityTargetFair = 11.0
         });
 
         var input = new ThermostatInput

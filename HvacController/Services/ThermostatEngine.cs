@@ -134,20 +134,20 @@ public sealed class ThermostatEngine
     {
         if (IsHighDemandPricingWindow(input.Now.LocalDateTime))
         {
-            return _settings.AbsHumidityTarget70;
+            return _settings.HumidityTargetFair;
         }
 
         if (input.CurrentTempFahrUp >= 72)
         {
-            return _settings.AbsHumidityTarget72;
+            return _settings.HumidityTargetIdeal;
         }
 
         if (input.CurrentTempFahrUp >= 71)
         {
-            return _settings.AbsHumidityTarget71;
+            return _settings.HumidityTargetGood;
         }
 
-        return _settings.AbsHumidityTarget70;
+        return _settings.HumidityTargetFair;
     }
 
     // High-demand pricing ($0.245/kWh) occurs from June 1 through September 30 on weekdays from 2 p.m. to 7 p.m.

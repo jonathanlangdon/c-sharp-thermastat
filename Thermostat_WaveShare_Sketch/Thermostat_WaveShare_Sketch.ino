@@ -66,6 +66,11 @@ int currentScreen = SCREEN_MAIN;
 
 #define SETTINGS_FOOTER_Y (SAFE_Y + SAFE_H - 36)
 #define SETTINGS_FOOTER_H 34
+#define SETTINGS_FOOTER_BUTTON_GAP 10
+#define SETTINGS_FOOTER_BUTTON_W ((SAFE_W - SETTINGS_FOOTER_BUTTON_GAP) / 2)
+
+#define SETTINGS_MANUAL_OVERRIDE_X SAFE_X
+#define SETTINGS_MANUAL_MODE_X (SAFE_X + SETTINGS_FOOTER_BUTTON_W + SETTINGS_FOOTER_BUTTON_GAP)
 
 // Gear on Main Page
 #define GEAR_CENTER_X (SAFE_X + 205)
@@ -958,21 +963,18 @@ void drawSettingsScreen() {
     SETTING_TARGET_NIGHT_HEATING);
 
   // Footer row
-  int footerButtonGap = 10;
-  int footerButtonW = (SAFE_W - footerButtonGap) / 2;
-
   drawSettingsFooterButton(
-    SAFE_X,
+    SETTINGS_MANUAL_OVERRIDE_X,
     SETTINGS_FOOTER_Y,
-    footerButtonW,
+    SETTINGS_FOOTER_BUTTON_W,
     SETTINGS_FOOTER_H,
     "Manual Override",
     formatBoolOnOff(settingsDraft.manualOverride));
 
   drawSettingsFooterButton(
-    SAFE_X + footerButtonW + footerButtonGap,
+    SETTINGS_MANUAL_MODE_X,
     SETTINGS_FOOTER_Y,
-    footerButtonW,
+    SETTINGS_FOOTER_BUTTON_W,
     SETTINGS_FOOTER_H,
     "Manual Mode",
     settingsDraft.manualMode);
@@ -1018,6 +1020,21 @@ void handleWiFiConnection() {
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   lastWiFiAttemptMs = millis();
+}
+
+void toggleManualOverride() {
+  settingsDraft.manualOverride = !settingsDraft.manualOverride;
+  drawSettingsScreen();
+}
+
+void toggleManualMode() {
+  if (settingsDraft.manualMode.equalsIgnoreCase("Off")) {
+    settingsDraft.manualMode = "Fan";
+  } else {
+    settingsDraft.manualMode = "Off";
+  }
+
+  drawSettingsScreen();
 }
 
 void publishModeCommand(const String& mode) {
@@ -1406,6 +1423,26 @@ bool isSettingsDownArrowTouch(int x, int y) {
     SETTINGS_ARROW_H);
 }
 
+bool isSettingsManualOverrideTouch(int x, int y) {
+  return isTouchInRect(
+    x,
+    y,
+    SETTINGS_MANUAL_OVERRIDE_X,
+    SETTINGS_FOOTER_Y,
+    SETTINGS_FOOTER_BUTTON_W,
+    SETTINGS_FOOTER_H);
+}
+
+bool isSettingsManualModeTouch(int x, int y) {
+  return isTouchInRect(
+    x,
+    y,
+    SETTINGS_MANUAL_MODE_X,
+    SETTINGS_FOOTER_Y,
+    SETTINGS_FOOTER_BUTTON_W,
+    SETTINGS_FOOTER_H);
+}
+
 bool isSettingsValueBoxTouch(int x, int y, int rowY) {
   return isTouchInRect(
     x,
@@ -1516,6 +1553,18 @@ void handleTouchPress(int x, int y) {
       currentScreen = SCREEN_MAIN;
       drawThermostatScreen();
 
+      return;
+    }
+
+    if (isSettingsManualOverrideTouch(x, y)) {
+      Serial.println("Manual override touched.");
+      toggleManualOverride();
+      return;
+    }
+
+    if (isSettingsManualModeTouch(x, y)) {
+      Serial.println("Manual mode touched.");
+      toggleManualMode();
       return;
     }
 

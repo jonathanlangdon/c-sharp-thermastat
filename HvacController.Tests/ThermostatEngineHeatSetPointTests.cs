@@ -97,7 +97,10 @@ public sealed class ThermostatEngineHeatSetPointTests
 
             DayHeatSetPoint = 70.5,
             NightHeatSetPoint = 65.0,
-            AbsoluteHumidityCoolingOnThreshold = 10.8,
+
+            HumidityTargetIdeal = 9.0,
+            HumidityTargetGood = 10.0,
+            HumidityTargetFair = 11.0,
 
             UpTempCalibration = 0.0,
             UpRelHumCalibration = 0.0,

@@ -16,12 +16,21 @@ public sealed record ThermostatInput
 
     public double DayHeatSetPoint { get; init; }
     public double NightHeatSetPoint { get; init; }
-    public double AbsoluteHumidityCoolingOnThreshold { get; init; }
+
+    public double HumidityTargetIdeal { get; init; }
+    public double HumidityTargetGood { get; init; }
+    public double HumidityTargetFair { get; init; }
 
     public double UpTempCalibration { get; init; }
     public double UpRelHumCalibration { get; init; }
     public double DownTempCalibration { get; init; }
     public double DownRelHumCalibration { get; init; }
+
+    public HvacMode Mode { get; init; }
+
+    public DateTimeOffset Now { get; init; }
+    public DateTimeOffset? LastSensorUpdate { get; init; }
+    public DateTimeOffset? LastMotionDetected { get; init; }
 
     public double? AbsoluteHumidityUpstairs =>
         CurrentTempFahrUp is null || RelHumidityUpstairs is null
@@ -56,9 +65,4 @@ public sealed record ThermostatInput
         }
     }
 
-    public HvacMode Mode { get; init; } = HvacMode.Heat;
-
-    public DateTimeOffset Now { get; init; }
-    public DateTimeOffset? LastSensorUpdate { get; init; }
-    public DateTimeOffset? LastMotionDetected { get; init; }
 }

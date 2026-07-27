@@ -63,7 +63,10 @@ public sealed class ThermostatCycleRunner
 
             DayHeatSetPoint = persisted.HeatSetPointDay,
             NightHeatSetPoint = persisted.HeatSetPointNight,
-            AbsoluteHumidityCoolingOnThreshold = persisted.MaxAbsHumSetPoint,
+            
+            HumidityTargetIdeal = persisted.HumidityTargetIdeal,
+            HumidityTargetGood = persisted.HumidityTargetGood,
+            HumidityTargetFair = persisted.HumidityTargetFair,
 
             UpTempCalibration = persisted.UpTempCalibration,
             UpRelHumCalibration = persisted.UpRelHumCalibration,

@@ -45,31 +45,26 @@ int currentScreen = SCREEN_MAIN;
 #define SAFE_H (SCREEN_H - SAFE_Y - SAFE_BOTTOM_MARGIN)
 
 // Settings Page Constants
-#define SETTINGS_X SAFE_X
-#define SETTINGS_Y SAFE_Y
-#define SETTINGS_W SAFE_W
-#define SETTINGS_H SAFE_H
-
-#define SETTINGS_ARROW_X (SETTINGS_X + 14)
+#define SETTINGS_ARROW_X (SAFE_X + 14)
 #define SETTINGS_ARROW_W 56
 #define SETTINGS_ARROW_H 62
 
 #define SETTINGS_EXIT_X SETTINGS_ARROW_X
-#define SETTINGS_EXIT_Y SETTINGS_Y
+#define SETTINGS_EXIT_Y SAFE_Y
 #define SETTINGS_EXIT_W SETTINGS_ARROW_W
 #define SETTINGS_EXIT_H 32
 
-#define SETTINGS_ROW_START_Y (SETTINGS_Y + 4)
+#define SETTINGS_ROW_START_Y (SAFE_Y + 4)
 #define SETTINGS_ROW_GAP 32
 #define SETTINGS_ROW_H 28
 
-#define SETTINGS_VALUE_X (SETTINGS_X + SETTINGS_W - 85)
+#define SETTINGS_VALUE_X (SAFE_X + SAFE_W - 120) // was 85
 #define SETTINGS_VALUE_W 78
 #define SETTINGS_VALUE_H 28
 
 #define SETTINGS_LABEL_RIGHT_X (SETTINGS_VALUE_X - 12)
 
-#define SETTINGS_FOOTER_Y (SETTINGS_Y + SETTINGS_H - 36)
+#define SETTINGS_FOOTER_Y (SAFE_Y + SAFE_H - 36)
 #define SETTINGS_FOOTER_H 34
 
 // Gear on Main Page
@@ -721,7 +716,7 @@ void drawSettingsScreen() {
   gfx->fillScreen(HVAC_BG);
 
   // Optional safe-area border while testing:
-  // gfx->drawRect(SETTINGS_X, SETTINGS_Y, SETTINGS_W, SETTINGS_H, HVAC_LINE);
+  // gfx->drawRect(SAFE_X, SAFE_Y, SAFE_W, SAFE_H, HVAC_LINE);
 
   // Exit button
   gfx->drawRect(
@@ -742,13 +737,13 @@ void drawSettingsScreen() {
 
   drawUpArrowButton(
     SETTINGS_ARROW_X,
-    SETTINGS_Y + 42,
+    SAFE_Y + 42,
     SETTINGS_ARROW_W,
     SETTINGS_ARROW_H);
 
   drawDownArrowButton(
     SETTINGS_ARROW_X,
-    SETTINGS_Y + 118,
+    SAFE_Y + 118,
     SETTINGS_ARROW_W,
     SETTINGS_ARROW_H);
 
@@ -781,10 +776,10 @@ void drawSettingsScreen() {
 
   // Footer row
   int footerButtonGap = 10;
-  int footerButtonW = (SETTINGS_W - footerButtonGap) / 2;
+  int footerButtonW = (SAFE_W - footerButtonGap) / 2;
 
   drawSettingsFooterButton(
-    SETTINGS_X,
+    SAFE_X,
     SETTINGS_FOOTER_Y,
     footerButtonW,
     SETTINGS_FOOTER_H,
@@ -792,7 +787,7 @@ void drawSettingsScreen() {
     "Off");
 
   drawSettingsFooterButton(
-    SETTINGS_X + footerButtonW + footerButtonGap,
+    SAFE_X + footerButtonW + footerButtonGap,
     SETTINGS_FOOTER_Y,
     footerButtonW,
     SETTINGS_FOOTER_H,

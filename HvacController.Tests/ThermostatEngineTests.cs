@@ -16,7 +16,7 @@ public sealed class ThermostatEngineTests
             temperatureFahr: 68,
             relativeHumidity: 50,
             outsideAbsoluteHumidity: 15.0,
-            maxAbsHumSetPoint: 9.5);
+            humidityTargetIdeal: 9);
 
         var (output, _) = engine.Evaluate(input, ThermostatRuntimeState.Empty);
 
@@ -36,7 +36,7 @@ public sealed class ThermostatEngineTests
             temperatureFahr: 72,
             relativeHumidity: 50,
             outsideAbsoluteHumidity: 15.0,
-            maxAbsHumSetPoint: 9.5);
+            humidityTargetIdeal: 9);
 
         var (output, _) = engine.Evaluate(input, ThermostatRuntimeState.Empty);
 
@@ -65,7 +65,7 @@ public sealed class ThermostatEngineTests
             temperatureFahr: 72,
             relativeHumidity: 56,
             outsideAbsoluteHumidity: 15.0,
-            maxAbsHumSetPoint: 9.5);
+            humidityTargetIdeal: 9);
 
         var (output, _) = engine.Evaluate(input, previousState);
 
@@ -94,7 +94,7 @@ public sealed class ThermostatEngineTests
             temperatureFahr: 72,
             relativeHumidity: 44,
             outsideAbsoluteHumidity: 15.0,
-            maxAbsHumSetPoint: 9.5);
+            humidityTargetIdeal: 9);
 
         var (output, _) = engine.Evaluate(input, previousState);
 
@@ -172,7 +172,7 @@ public sealed class ThermostatEngineTests
             temperatureFahr: 80,
             relativeHumidity: 48,
             outsideAbsoluteHumidity: 15.0,
-            maxAbsHumSetPoint: 9.5);
+            humidityTargetIdeal: 9);
 
         var (output, _) = engine.Evaluate(input, previousState);
 
@@ -201,7 +201,7 @@ public sealed class ThermostatEngineTests
             temperatureFahr: 71,
             relativeHumidity: 48,
             outsideAbsoluteHumidity: 15.0,
-            maxAbsHumSetPoint: 9.5);
+            humidityTargetIdeal: 9);
 
         var (output, _) = engine.Evaluate(input, previousState);
 
@@ -515,7 +515,9 @@ public sealed class ThermostatEngineTests
             temperatureFahr: 72,
             relativeHumidity: 50,
             outsideAbsoluteHumidity: 15.0,
-            maxAbsHumSetPoint: 9.5) with
+            humidityTargetIdeal: 9.5,
+            humidityTargetGood: 9.5,
+            humidityTargetFair: 9.5) with
         {
             CurrentTempFahrDown = 65,
             RelHumidityDownstairs = 40,
@@ -540,7 +542,9 @@ public sealed class ThermostatEngineTests
             temperatureFahr: 68,
             relativeHumidity: 40,
             outsideAbsoluteHumidity: 15.0,
-            maxAbsHumSetPoint: 9.5) with
+            humidityTargetIdeal: 9,
+            humidityTargetGood: 10,
+            humidityTargetFair: 11) with
         {
             CurrentTempFahrDown = 72,
             RelHumidityDownstairs = 55,
@@ -565,7 +569,9 @@ public sealed class ThermostatEngineTests
             temperatureFahr: 68,
             relativeHumidity: 40,
             outsideAbsoluteHumidity: 15.0,
-            maxAbsHumSetPoint: 9.5) with
+            humidityTargetIdeal: 9.5,
+            humidityTargetGood: 9.5,
+            humidityTargetFair: 9.5) with
         {
             CurrentTempFahrDown = 65,
             RelHumidityDownstairs = 40,
@@ -606,7 +612,9 @@ public sealed class ThermostatEngineTests
         double temperatureFahr,
         double relativeHumidity,
         double? outsideAbsoluteHumidity,
-        double maxAbsHumSetPoint = 10.8)
+        double humidityTargetIdeal = 9.0,
+        double humidityTargetGood = 10.0,
+        double humidityTargetFair = 11.0)
     {
         return new ThermostatInput
         {
@@ -614,9 +622,14 @@ public sealed class ThermostatEngineTests
             RelHumidityUpstairs = relativeHumidity,
             Mode = HvacMode.Cool,
             OutsideAbsoluteHumidity = outsideAbsoluteHumidity,
-            AbsoluteHumidityCoolingOnThreshold = maxAbsHumSetPoint,
+
             DayHeatSetPoint = 70.5,
             NightHeatSetPoint = 65.0,
+
+            HumidityTargetIdeal = humidityTargetIdeal,
+            HumidityTargetGood = humidityTargetGood,
+            HumidityTargetFair = humidityTargetFair,
+
             Now = now,
             LastSensorUpdate = now
         };
@@ -634,11 +647,24 @@ public sealed class ThermostatEngineTests
             CurrentTempFahrUp = temperatureFahr,
             RelHumidityUpstairs = relativeHumidity,
             Mode = HvacMode.Heat,
+
             DayHeatSetPoint = dayHeatSetPoint,
             NightHeatSetPoint = nightHeatSetPoint,
-            AbsoluteHumidityCoolingOnThreshold = 10.8,
+
+            HumidityTargetIdeal = 9.0,
+            HumidityTargetGood = 10.0,
+            HumidityTargetFair = 11.0,
+
             Now = now,
             LastSensorUpdate = now
         };
     }
+
+    private static DateTimeOffset NormalCoolingTime()
+    {
+        return new DateTimeOffset(
+            2026, 6, 12, 13, 0, 0,
+            TimeSpan.FromHours(-4));
+    }
+
 }

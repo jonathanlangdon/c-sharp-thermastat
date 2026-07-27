@@ -8,7 +8,7 @@ public sealed class ThermostatEngine
     private const string NoTemperatureReason = "No temperature reading";
     private const string NoHumidityReason = "No humidity reading";
     private const string SensorTimeoutReason = "Sensor timeout";
-    private const string OutdoorHumidityUnavailableReason = "Outdoor humidity is unavailable";
+    private const string ManualOverrideReason = "Manual override";
 
     private readonly HvacSettings _settings;
 
@@ -23,6 +23,22 @@ public sealed class ThermostatEngine
         ThermostatInput input,
         ThermostatRuntimeState previousState)
     {
+        var heatSetPoint = GetHeatSetPoint(input);
+        var maxAbsHumSetPoint = GetCoolingHumidityTarget(input);
+
+        if (input.ManualOverride)
+        {
+            return Transition(
+                previousState,
+                input.Now,
+                CreateOutput(
+                    heat: false,
+                    cool: false,
+                    fan: input.ManualMode == ManualMode.Fan,
+                    heatSetPoint,
+                    maxAbsHumSetPoint,
+                    ManualOverrideReason));
+        }
         if (input.CurrentTempFahrUp is null)
         {
             return SafeOff(previousState, input.Now, NoTemperatureReason);
@@ -40,7 +56,6 @@ public sealed class ThermostatEngine
         }
 
         var temp = input.CurrentTempFahrUp.Value;
-        var heatSetPoint = GetHeatSetPoint(input);
 
         return input.Mode switch
         {
@@ -52,19 +67,8 @@ public sealed class ThermostatEngine
                     cool: false,
                     fan: true,
                     heatSetPoint,
-                    maxAbsHumSetPoint: GetCoolingHumidityTarget(input),
+                    maxAbsHumSetPoint,
                     NormalReason)),
-
-            HvacMode.Cool when input.OutsideAbsoluteHumidity is null => Transition(
-                previousState,
-                input.Now,
-                CreateOutput(
-                    heat: false,
-                    cool: false,
-                    fan: true,
-                    heatSetPoint,
-                    maxAbsHumSetPoint: GetCoolingHumidityTarget(input),
-                    OutdoorHumidityUnavailableReason)),
 
             HvacMode.Cool => Transition(
                 previousState,
@@ -74,7 +78,7 @@ public sealed class ThermostatEngine
                     cool: ShouldCool(input, previousState),
                     fan: true,
                     heatSetPoint,
-                    maxAbsHumSetPoint: GetCoolingHumidityTarget(input),
+                    maxAbsHumSetPoint,
                     NormalReason)),
 
             _ => SafeOff(previousState, input.Now, $"Unsupported HVAC mode: {input.Mode}")

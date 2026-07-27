@@ -5,28 +5,6 @@ namespace HvacController.Tests;
 
 public sealed class ThermostatEngineCoolingHumidityTests
 {
-    [Fact]
-    public void Evaluate_DoesNotCoolWhenOutdoorHumidityIsUnknownEvenIfCoolingThresholdIsMet()
-    {
-        var now = NormalCoolingTime();
-        var engine = new ThermostatEngine(new HvacSettings());
-
-        var input = CoolInput(
-            now,
-            temperatureFahr: 72.0,
-            relativeHumidity: 60.0,
-            outsideAbsoluteHumidity: null);
-
-        var (output, _) = engine.Evaluate(
-            input,
-            ThermostatRuntimeState.Empty);
-
-        Assert.False(output.Cool);
-        Assert.False(output.Heat);
-        Assert.True(output.Fan);
-        Assert.Equal("Outdoor humidity is unavailable", output.Reason);
-        Assert.Equal(9.0, output.MaxAbsHumSetPoint);
-    }
 
     [Fact]
     public void Evaluate_CoolsWhenIdealHumidityTargetIsMetAt72OrAbove()

@@ -133,6 +133,7 @@ const int MQTT_PORT = 1883;
 const char* SENSOR_TOPIC = "hvac/upstairs/sensor";
 const char* STATUS_TOPIC = "hvac/status";
 const char* MODE_SET_TOPIC = "hvac/mode/set";
+const char* SETTINGS_SET_TOPIC = "hvac/settings/set";
 
 TCA9554 TCA(0x20);
 
@@ -1059,6 +1060,37 @@ void publishModeCommand(const String& mode) {
   Serial.println(buffer);
 }
 
+void publishSettingsCommand() {
+  if (!mqttClient.connected()) {
+    Serial.println("Skipping settings publish because MQTT is not connected.");
+    return;
+  }
+
+  StaticJsonDocument<384> doc;
+
+  doc["heatSetPointDay"] = roundToTenths(settingsDraft.heatSetPointDay);
+  doc["heatSetPointNight"] = roundToTenths(settingsDraft.heatSetPointNight);
+
+  doc["humidityTargetFair"] = roundToTenths(settingsDraft.humidityTargetFair);
+  doc["humidityTargetGood"] = roundToTenths(settingsDraft.humidityTargetGood);
+  doc["humidityTargetIdeal"] = roundToTenths(settingsDraft.humidityTargetIdeal);
+
+  doc["manualOverride"] = settingsDraft.manualOverride;
+  doc["manualMode"] = settingsDraft.manualMode;
+
+  char buffer[384];
+  size_t length = serializeJson(doc, buffer);
+
+  bool published = mqttClient.publish(
+    SETTINGS_SET_TOPIC,
+    buffer,
+    length);
+
+  Serial.print("Published settings command: ");
+  Serial.println(published ? "yes" : "no");
+  Serial.println(buffer);
+}
+
 bool hasPendingModeChange() {
   if (pendingMode == "") {
     return false;
@@ -1544,8 +1576,11 @@ void handleTouchPress(int x, int y) {
   }
 
   if (currentScreen == SCREEN_SETTINGS) {
+    
     if (isSettingsExitTouch(x, y)) {
       Serial.println("Settings exit touched.");
+
+      publishSettingsCommand();
 
       settingsDraftActive = false;
       currentSettingTarget = SETTING_TARGET_NONE;

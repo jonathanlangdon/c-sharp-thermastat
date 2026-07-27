@@ -8,18 +8,22 @@ public sealed class UpstairsSensorMqttSubscriber : BackgroundService
 {
     private const string UpstairsSensorTopic = "hvac/upstairs/sensor";
     private const string ModeSetTopic = "hvac/mode/set";
+    private const string SettingsSetTopic = "hvac/settings/set";
 
     private readonly UpstairsSensorMessageHandler _upstairsSensorHandler;
     private readonly ModeSetMessageHandler _modeSetHandler;
+    private readonly SettingsSetMessageHandler _settingsSetHandler;
     private readonly ILogger<UpstairsSensorMqttSubscriber> _logger;
 
     public UpstairsSensorMqttSubscriber(
         UpstairsSensorMessageHandler upstairsSensorHandler,
         ModeSetMessageHandler modeSetHandler,
+        SettingsSetMessageHandler settingsSetHandler,
         ILogger<UpstairsSensorMqttSubscriber> logger)
     {
         _upstairsSensorHandler = upstairsSensorHandler;
         _modeSetHandler = modeSetHandler;
+        _settingsSetHandler = settingsSetHandler;
         _logger = logger;
     }
 
@@ -78,6 +82,27 @@ public sealed class UpstairsSensorMqttSubscriber : BackgroundService
                 return Task.CompletedTask;
             }
 
+            if (topic == SettingsSetTopic)
+            {
+                var handled = _settingsSetHandler.Handle(payload);
+
+                if (handled)
+                {
+                    _logger.LogInformation(
+                        "Handled settings set MQTT message from topic {Topic}.",
+                        topic);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Ignored invalid settings set MQTT message from topic {Topic}: {Payload}",
+                        topic,
+                        payload);
+                }
+
+                return Task.CompletedTask;
+            }
+
             _logger.LogWarning(
                 "Ignored MQTT message from unexpected topic {Topic}: {Payload}",
                 topic,
@@ -108,6 +133,7 @@ public sealed class UpstairsSensorMqttSubscriber : BackgroundService
                         .CreateSubscribeOptionsBuilder()
                         .WithTopicFilter(UpstairsSensorTopic)
                         .WithTopicFilter(ModeSetTopic)
+                        .WithTopicFilter(SettingsSetTopic)
                         .Build();
 
                     await mqttClient.SubscribeAsync(
@@ -115,9 +141,10 @@ public sealed class UpstairsSensorMqttSubscriber : BackgroundService
                         stoppingToken);
 
                     _logger.LogInformation(
-                        "Subscribed to MQTT topics {UpstairsSensorTopic} and {ModeSetTopic}.",
+                        "Subscribed to MQTT topics {UpstairsSensorTopic}, {ModeSetTopic}, and {SettingsSetTopic}.",
                         UpstairsSensorTopic,
-                        ModeSetTopic);
+                        ModeSetTopic,
+                        SettingsSetTopic);
                 }
 
                 await Task.Delay(

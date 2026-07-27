@@ -1,0 +1,22 @@
+{
+  "lastSensorUpdate": "2026-07-27T14:54:31",
+  "lastMotionDetected": "2026-07-27T14:42:31",
+  "mode": "cool",
+  "heatSetPointDay": 70.5,
+  "heatSetPointNight": 65,
+  "maxAbsHumSetPoint": 11,
+  "upTempCalibration": -4.5,
+  "upRelHumCalibration": 3,
+  "downTempCalibration": -0.5,
+  "downRelHumCalibration": -1.5,
+  "wasHeating": false,
+  "wasCooling": false,
+  "runtimeDate": "2026-07-27",
+  "coolHoursToday": 3.327639439833336,
+  "heatHoursToday": 0,
+  "lastRuntimeUpdated": "2026-07-27T14:54:38",
+  "lastHeatStarted": "2026-07-24T13:27:40",
+  "lastHeatStopped": "2026-07-24T13:27:50",
+  "lastCoolStarted": "2026-07-27T12:02:44",
+  "lastCoolStopped": "2026-07-27T12:09:44"
+}

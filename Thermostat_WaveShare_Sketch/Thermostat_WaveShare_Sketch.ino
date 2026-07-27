@@ -32,13 +32,52 @@
 #define SCREEN_W 480
 #define SCREEN_H 320
 
+#define SCREEN_MAIN 0
+#define SCREEN_SETTINGS 1
+
+int currentScreen = SCREEN_MAIN;
+
 #define SAFE_X 45
 #define SAFE_Y 55
 #define SAFE_RIGHT_MARGIN 35
 #define SAFE_BOTTOM_MARGIN 40
-
 #define SAFE_W (SCREEN_W - SAFE_X - SAFE_RIGHT_MARGIN)
 #define SAFE_H (SCREEN_H - SAFE_Y - SAFE_BOTTOM_MARGIN)
+
+// Settings Page Constants
+#define SETTINGS_X SAFE_X
+#define SETTINGS_Y SAFE_Y
+#define SETTINGS_W SAFE_W
+#define SETTINGS_H SAFE_H
+
+#define SETTINGS_ARROW_X (SETTINGS_X + 14)
+#define SETTINGS_ARROW_W 56
+#define SETTINGS_ARROW_H 62
+
+#define SETTINGS_EXIT_X SETTINGS_ARROW_X
+#define SETTINGS_EXIT_Y SETTINGS_Y
+#define SETTINGS_EXIT_W SETTINGS_ARROW_W
+#define SETTINGS_EXIT_H 32
+
+#define SETTINGS_ROW_START_Y (SETTINGS_Y + 4)
+#define SETTINGS_ROW_GAP 32
+#define SETTINGS_ROW_H 28
+
+#define SETTINGS_VALUE_X (SETTINGS_X + SETTINGS_W - 85)
+#define SETTINGS_VALUE_W 78
+#define SETTINGS_VALUE_H 28
+
+#define SETTINGS_LABEL_RIGHT_X (SETTINGS_VALUE_X - 12)
+
+#define SETTINGS_FOOTER_Y (SETTINGS_Y + SETTINGS_H - 36)
+#define SETTINGS_FOOTER_H 34
+
+// Gear on Main Page
+#define GEAR_CENTER_X (SAFE_X + 205)
+#define GEAR_CENTER_Y (SAFE_Y + 34)
+#define GEAR_TOUCH_SIZE 56
+#define GEAR_BITMAP_W 40
+#define GEAR_BITMAP_H 40
 
 #define LD2410_OUT_PIN 43
 
@@ -122,6 +161,8 @@ struct HvacStatus {
   String mode = "Heat";
 
   double heatSetPointFahr = NAN;
+  double heatSetPointDay = NAN;
+  double heatSetPointNight = NAN;
   double maxAbsHumSetPoint = NAN;
 
   double upstairsTemperature = NAN;
@@ -129,6 +170,10 @@ struct HvacStatus {
   double downstairsAbsoluteHumidity = NAN;
   double outsideTemperature = NAN;
   double outsideAbsoluteHumidity = NAN;
+
+  double fairHumidityTarget = NAN;
+  double goodHumidityTarget = NAN;
+  double idealHumidityTarget = NAN;
 };
 
 HvacStatus latestStatus;
@@ -255,6 +300,108 @@ void getBounds(
   gfx->getTextBounds(text, 0, 0, x1, y1, w, h);
 }
 
+void drawUpArrowButton(int x, int y, int w, int h) {
+  gfx->drawRect(x, y, w, h, HVAC_LINE);
+
+  int cx = x + (w / 2);
+
+  gfx->fillTriangle(
+    cx,
+    y + 10,
+    x + 10,
+    y + h - 10,
+    x + w - 10,
+    y + h - 10,
+    HVAC_TEXT);
+}
+
+void drawDownArrowButton(int x, int y, int w, int h) {
+  gfx->drawRect(x, y, w, h, HVAC_LINE);
+
+  int cx = x + (w / 2);
+
+  gfx->fillTriangle(
+    x + 10,
+    y + 10,
+    x + w - 10,
+    y + 10,
+    cx,
+    y + h - 10,
+    HVAC_TEXT);
+}
+
+void drawSettingsFooterButton(
+  int x,
+  int y,
+  int w,
+  int h,
+  const char* label,
+  const char* value) {
+  gfx->drawRect(x, y, w, h, HVAC_LINE);
+
+  setFontSmall(HVAC_TEXT);
+
+  String text = String(label) + ": " + value;
+
+  drawCenteredTextInBox(
+    x,
+    y,
+    w,
+    h,
+    text.c_str(),
+    HVAC_TEXT);
+}
+
+void drawSettingsValueBox(
+  int x,
+  int y,
+  int w,
+  int h,
+  const String& value) {
+  gfx->drawRect(x, y, w, h, HVAC_LINE);
+
+  setFontMedium(HVAC_TEXT);
+
+  int16_t x1;
+  int16_t y1;
+  uint16_t textW;
+  uint16_t textH;
+
+  gfx->getTextBounds(value.c_str(), 0, 0, &x1, &y1, &textW, &textH);
+
+  int textX = x + ((w - textW) / 2) - x1;
+  int textY = y + ((h - textH) / 2) - y1;
+
+  gfx->setCursor(textX, textY);
+  gfx->print(value);
+}
+
+void drawSettingsRow(
+  int y,
+  const char* label,
+  const String& value) {
+  setFontSmall(HVAC_TEXT);
+
+  int16_t x1;
+  int16_t y1;
+  uint16_t textW;
+  uint16_t textH;
+
+  gfx->getTextBounds(label, 0, 0, &x1, &y1, &textW, &textH);
+
+  int labelX = SETTINGS_LABEL_RIGHT_X - textW - x1;
+  int labelY = y + 22;
+
+  printAt(labelX, labelY, label);
+
+  drawSettingsValueBox(
+    SETTINGS_VALUE_X,
+    y,
+    SETTINGS_VALUE_W,
+    SETTINGS_VALUE_H,
+    value);
+}
+
 void drawCenteredTextInBox(
   int boxX,
   int boxY,
@@ -275,6 +422,42 @@ void drawCenteredTextInBox(
   gfx->setCursor(textX, textY);
   gfx->setTextColor(color);
   gfx->print(text);
+}
+
+static const unsigned char gearBitmap[] PROGMEM = {
+  0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x07, 0x80, 0xE0, 0x00,
+  0x00, 0x3F, 0x81, 0xFC, 0x00, 0x00, 0x7F, 0x81, 0xFE, 0x00,
+  0x00, 0x7F, 0xC3, 0xFE, 0x00, 0x00, 0x3F, 0xFF, 0xFC, 0x00,
+  0x00, 0x3F, 0xFF, 0xFC, 0x00, 0x00, 0x1F, 0xFF, 0xFC, 0x00,
+  0x00, 0x1F, 0xFF, 0xF8, 0x00, 0x18, 0x3F, 0xFF, 0xFC, 0x08,
+  0x3E, 0x7F, 0xFF, 0xFE, 0x7C, 0x3F, 0xFF, 0xFF, 0xFF, 0xFC,
+  0x3F, 0xFF, 0xC3, 0xFF, 0xFE, 0x7F, 0xFF, 0x00, 0xFF, 0xFE,
+  0x7F, 0xFE, 0x00, 0x3F, 0xFF, 0xFF, 0xFC, 0x00, 0x1F, 0xFF,
+  0x7F, 0xF8, 0x00, 0x1F, 0xFE, 0x0F, 0xF8, 0x00, 0x0F, 0xF8,
+  0x07, 0xF0, 0x00, 0x0F, 0xE0, 0x07, 0xF0, 0x00, 0x0F, 0xE0,
+  0x07, 0xF0, 0x00, 0x0F, 0xE0, 0x07, 0xF0, 0x00, 0x0F, 0xE0,
+  0x0F, 0xF8, 0x00, 0x0F, 0xF0, 0x3F, 0xF8, 0x00, 0x1F, 0xFC,
+  0x7F, 0xFC, 0x00, 0x1F, 0xFF, 0x7F, 0xFC, 0x00, 0x3F, 0xFF,
+  0x7F, 0xFE, 0x00, 0x7F, 0xFE, 0x3F, 0xFF, 0x81, 0xFF, 0xFE,
+  0x3F, 0xFF, 0xFF, 0xFF, 0xFC, 0x3F, 0x7F, 0xFF, 0xFF, 0x7C,
+  0x18, 0x3F, 0xFF, 0xFE, 0x18, 0x00, 0x1F, 0xFF, 0xFC, 0x00,
+  0x00, 0x1F, 0xFF, 0xF8, 0x00, 0x00, 0x3F, 0xFF, 0xFC, 0x00,
+  0x00, 0x3F, 0xFF, 0xFC, 0x00, 0x00, 0x3F, 0xC3, 0xFE, 0x00,
+  0x00, 0x7F, 0xC1, 0xFE, 0x00, 0x00, 0x3F, 0x81, 0xFC, 0x00,
+  0x00, 0x0F, 0x80, 0xF0, 0x00, 0x00, 0x03, 0x00, 0xC0, 0x00
+};
+
+void drawGearIcon() {
+  int x = GEAR_CENTER_X - (GEAR_BITMAP_W / 2);
+  int y = GEAR_CENTER_Y - (GEAR_BITMAP_H / 2);
+
+  gfx->drawBitmap(
+    x,
+    y,
+    gearBitmap,
+    GEAR_BITMAP_W,
+    GEAR_BITMAP_H,
+    HVAC_TEXT);
 }
 
 void drawTopBar() {
@@ -525,10 +708,96 @@ void drawThermostatScreen() {
   gfx->fillScreen(HVAC_BG);
 
   drawTopBar();
+  drawGearIcon();
   drawLargeTemperature();
   drawHumidityPanel();
   drawCurrentActivity();
   drawBottomBar();
+
+  gfx->flush();
+}
+
+void drawSettingsScreen() {
+  gfx->fillScreen(HVAC_BG);
+
+  // Optional safe-area border while testing:
+  // gfx->drawRect(SETTINGS_X, SETTINGS_Y, SETTINGS_W, SETTINGS_H, HVAC_LINE);
+
+  // Exit button
+  gfx->drawRect(
+    SETTINGS_EXIT_X,
+    SETTINGS_EXIT_Y,
+    SETTINGS_EXIT_W,
+    SETTINGS_EXIT_H,
+    HVAC_LINE);
+
+  setFontMedium(HVAC_TEXT);
+  drawCenteredTextInBox(
+    SETTINGS_EXIT_X,
+    SETTINGS_EXIT_Y,
+    SETTINGS_EXIT_W,
+    SETTINGS_EXIT_H,
+    "Exit",
+    HVAC_TEXT);
+
+  drawUpArrowButton(
+    SETTINGS_ARROW_X,
+    SETTINGS_Y + 42,
+    SETTINGS_ARROW_W,
+    SETTINGS_ARROW_H);
+
+  drawDownArrowButton(
+    SETTINGS_ARROW_X,
+    SETTINGS_Y + 118,
+    SETTINGS_ARROW_W,
+    SETTINGS_ARROW_H);
+
+  int rowY = SETTINGS_ROW_START_Y;
+
+  drawSettingsRow(
+    rowY,
+    "Fair humidity",
+    formatSetPoint(latestStatus.fairHumidityTarget));
+
+  drawSettingsRow(
+    rowY + SETTINGS_ROW_GAP,
+    "Good humidity",
+    formatSetPoint(latestStatus.goodHumidityTarget));
+
+  drawSettingsRow(
+    rowY + (SETTINGS_ROW_GAP * 2),
+    "Ideal humidity",
+    formatSetPoint(latestStatus.idealHumidityTarget));
+
+  drawSettingsRow(
+    rowY + (SETTINGS_ROW_GAP * 3),
+    "Day heating",
+    formatSetPoint(latestStatus.heatSetPointDay));
+
+  drawSettingsRow(
+    rowY + (SETTINGS_ROW_GAP * 4),
+    "Night heating",
+    formatSetPoint(latestStatus.heatSetPointNight));
+
+  // Footer row
+  int footerButtonGap = 10;
+  int footerButtonW = (SETTINGS_W - footerButtonGap) / 2;
+
+  drawSettingsFooterButton(
+    SETTINGS_X,
+    SETTINGS_FOOTER_Y,
+    footerButtonW,
+    SETTINGS_FOOTER_H,
+    "Manual Override",
+    "Off");
+
+  drawSettingsFooterButton(
+    SETTINGS_X + footerButtonW + footerButtonGap,
+    SETTINGS_FOOTER_Y,
+    footerButtonW,
+    SETTINGS_FOOTER_H,
+    "Manual Mode",
+    "Off");
 
   gfx->flush();
 }
@@ -661,6 +930,8 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
   latestStatus.mode = doc["mode"] | "";
 
   latestStatus.heatSetPointFahr = doc["heatSetPointFahr"] | NAN;
+  latestStatus.heatSetPointDay = doc["heatSetPointDay"] | NAN;
+  latestStatus.heatSetPointNight = doc["heatSetPointNight"] | NAN;
   latestStatus.maxAbsHumSetPoint = doc["maxAbsHumSetPoint"] | NAN;
 
   latestStatus.upstairsTemperature = doc["upstairsTemperature"] | NAN;
@@ -680,7 +951,18 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
 
   if (pendingMode != "") {
     bottomBarHeatW = getTargetHeatWidth();
-    drawThermostatScreen();
+
+    if (currentScreen == SCREEN_SETTINGS) {
+      drawSettingsScreen();
+    } else {
+      drawThermostatScreen();
+    }
+
+    return;
+  }
+
+  if (currentScreen == SCREEN_SETTINGS) {
+    drawSettingsScreen();
     return;
   }
 
@@ -918,6 +1200,22 @@ bool isValidScreenTouch(int x, int y) {
   return x >= 0 && x < SCREEN_W && y >= 0 && y < SCREEN_H;
 }
 
+bool isGearTouch(int x, int y) {
+  int half = GEAR_TOUCH_SIZE / 2;
+
+  return x >= GEAR_CENTER_X - half &&
+         x <= GEAR_CENTER_X + half &&
+         y >= GEAR_CENTER_Y - half &&
+         y <= GEAR_CENTER_Y + half;
+}
+
+bool isSettingsExitTouch(int x, int y) {
+  return x >= SETTINGS_EXIT_X &&
+         x <= SETTINGS_EXIT_X + SETTINGS_EXIT_W &&
+         y >= SETTINGS_EXIT_Y &&
+         y <= SETTINGS_EXIT_Y + SETTINGS_EXIT_H;
+}
+
 void changeSelectedMode(const String& newMode) {
   if (selectedMode == newMode) {
     return;
@@ -951,9 +1249,31 @@ void changeSelectedMode(const String& newMode) {
 }
 
 void handleTouchPress(int x, int y) {
+  if (currentScreen == SCREEN_MAIN && isGearTouch(x, y)) {
+    Serial.println("Gear/settings touched.");
+
+    currentScreen = SCREEN_SETTINGS;
+    drawSettingsScreen();
+
+    return;
+  }
+
+  if (currentScreen == SCREEN_SETTINGS) {
+  if (isSettingsExitTouch(x, y)) {
+    Serial.println("Settings exit touched.");
+
+    currentScreen = SCREEN_MAIN;
+    drawThermostatScreen();
+
+    return;
+  }
+
+  Serial.println("Settings screen touched.");
+  return;
+  }
+
   int barY = SAFE_Y + SAFE_H - BOTTOM_BAR_H;
   int barBottom = SAFE_Y + SAFE_H - 1;
-
   bool inBottomBar =
     x >= SAFE_X && x < SAFE_X + SAFE_W && y >= barY && y <= barBottom;
 

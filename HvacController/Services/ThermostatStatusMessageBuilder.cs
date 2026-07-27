@@ -28,10 +28,17 @@ public static class ThermostatStatusMessageBuilder
             Reason = output.Reason,
 
             Mode = input.Mode,
+            ManualOverride = input.ManualOverride,
+            ManualMode = input.ManualMode,
+            
             HeatSetPointFahr = output.HeatSetPointFahr,
             HeatSetPointDay = input.DayHeatSetPoint,
             HeatSetPointNight = input.NightHeatSetPoint,
             MaxAbsHumSetPoint = output.MaxAbsHumSetPoint,
+
+            HumidityTargetIdeal = input.HumidityTargetIdeal,
+            HumidityTargetGood = input.HumidityTargetGood,
+            HumidityTargetFair = input.HumidityTargetFair,
 
             UpTempCalibration = input.UpTempCalibration,
             UpRelHumCalibration = input.UpRelHumCalibration,

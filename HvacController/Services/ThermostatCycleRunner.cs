@@ -68,6 +68,9 @@ public sealed class ThermostatCycleRunner
             HumidityTargetGood = persisted.HumidityTargetGood,
             HumidityTargetFair = persisted.HumidityTargetFair,
 
+            ManualOverride = persisted.ManualOverride,
+            ManualMode = persisted.ManualMode,
+
             UpTempCalibration = persisted.UpTempCalibration,
             UpRelHumCalibration = persisted.UpRelHumCalibration,
             DownTempCalibration = persisted.DownTempCalibration,

@@ -36,7 +36,9 @@ public sealed class ThermostatCycleRunnerTests
             Mode = HvacMode.Cool,
             HeatSetPointDay = 70.5,
             HeatSetPointNight = 65.0,
-            MaxAbsHumSetPoint = 9.5
+            HumidityTargetIdeal = 8.5,
+            HumidityTargetGood = 10.2,
+            HumidityTargetFair = 11.5
         }
 };
 

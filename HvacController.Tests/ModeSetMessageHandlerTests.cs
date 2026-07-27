@@ -15,7 +15,9 @@ public sealed class ModeSetMessageHandlerTests
                 Mode = HvacMode.Cool,
                 HeatSetPointDay = 71.5,
                 HeatSetPointNight = 64.5,
-                MaxAbsHumSetPoint = 10.4,
+                HumidityTargetIdeal = 8.8,
+                HumidityTargetGood = 10.4,
+                HumidityTargetFair = 11.2,
                 WasCooling = true
             }
         };
@@ -29,7 +31,9 @@ public sealed class ModeSetMessageHandlerTests
 
         Assert.Equal(71.5, store.State.HeatSetPointDay);
         Assert.Equal(64.5, store.State.HeatSetPointNight);
-        Assert.Equal(10.4, store.State.MaxAbsHumSetPoint);
+        Assert.Equal(8.8, store.State.HumidityTargetIdeal);
+        Assert.Equal(10.4, store.State.HumidityTargetGood);
+        Assert.Equal(11.2, store.State.HumidityTargetFair);
         Assert.True(store.State.WasCooling);
     }
 
@@ -43,7 +47,9 @@ public sealed class ModeSetMessageHandlerTests
                 Mode = HvacMode.Heat,
                 HeatSetPointDay = 70.5,
                 HeatSetPointNight = 65.0,
-                MaxAbsHumSetPoint = 10.8
+                HumidityTargetIdeal = 9.0,
+                HumidityTargetGood = 10.0,
+                HumidityTargetFair = 11.0
             }
         };
 
@@ -103,7 +109,9 @@ public sealed class ModeSetMessageHandlerTests
                 Mode = HvacMode.Heat,
                 HeatSetPointDay = 71.0,
                 HeatSetPointNight = 66.0,
-                MaxAbsHumSetPoint = 10.2
+                HumidityTargetIdeal = 8.5,
+                HumidityTargetGood = 10.2,
+                HumidityTargetFair = 11.5
             }
         };
 
@@ -115,7 +123,9 @@ public sealed class ModeSetMessageHandlerTests
         Assert.Equal(HvacMode.Heat, store.State.Mode);
         Assert.Equal(71.0, store.State.HeatSetPointDay);
         Assert.Equal(66.0, store.State.HeatSetPointNight);
-        Assert.Equal(10.2, store.State.MaxAbsHumSetPoint);
+        Assert.Equal(8.5, store.State.HumidityTargetIdeal);
+        Assert.Equal(10.2, store.State.HumidityTargetGood);
+        Assert.Equal(11.5, store.State.HumidityTargetFair);
     }
 
     [Fact]

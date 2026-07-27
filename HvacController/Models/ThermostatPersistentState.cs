@@ -9,11 +9,13 @@ public sealed record ThermostatPersistentState
 
     public double HeatSetPointDay { get; init; } = 70.5;
     public double HeatSetPointNight { get; init; } = 65.0;
-    public double MaxAbsHumSetPoint { get; init; } = 11.0;
 
     public double HumidityTargetIdeal { get; init; } = 9.0;
     public double HumidityTargetGood { get; init; } = 10.0;
     public double HumidityTargetFair { get; init; } = 11.0;
+
+    public bool ManualOverride { get; init; }
+    public ManualMode ManualMode { get; init; } = ManualMode.Off;
 
     public double UpTempCalibration { get; init; } = -4.5;
     public double UpRelHumCalibration { get; init; } = 3.0;
@@ -118,6 +120,9 @@ public sealed record ThermostatPersistentState
             HumidityTargetIdeal = input.HumidityTargetIdeal,
             HumidityTargetGood = input.HumidityTargetGood,
             HumidityTargetFair = input.HumidityTargetFair,
+
+            ManualOverride = input.ManualOverride,
+            ManualMode = input.ManualMode,
 
             UpTempCalibration = input.UpTempCalibration,
             UpRelHumCalibration = input.UpRelHumCalibration,

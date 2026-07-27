@@ -21,6 +21,9 @@ public sealed record ThermostatInput
     public double HumidityTargetGood { get; init; }
     public double HumidityTargetFair { get; init; }
 
+    public bool ManualOverride { get; init; }
+    public ManualMode ManualMode { get; init; }
+
     public double UpTempCalibration { get; init; }
     public double UpRelHumCalibration { get; init; }
     public double DownTempCalibration { get; init; }

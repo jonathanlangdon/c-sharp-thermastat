@@ -13,10 +13,19 @@ public sealed record ThermostatStatusMessage
     public string Reason { get; init; } = "";
 
     public HvacMode Mode { get; init; }
-    public double? HeatSetPointFahr { get; init; } // replace later on waveshare
+    public double? HeatSetPointFahr { get; init; }
     public double HeatSetPointDay { get; init; }
     public double HeatSetPointNight { get; init; }
+    
+    public double HumidityTargetIdeal { get; init; }
+    public double HumidityTargetGood { get; init; }
+    public double HumidityTargetFair { get; init; }
+
     public double MaxAbsHumSetPoint { get; init; }
+
+    public bool ManualOverride { get; init; }
+    public ManualMode ManualMode { get; init; }
+
 
     public double UpTempCalibration { get; init; }
     public double UpRelHumCalibration { get; init; }

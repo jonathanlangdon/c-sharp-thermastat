@@ -73,7 +73,7 @@ int currentScreen = SCREEN_MAIN;
 #define SETTINGS_MANUAL_MODE_X (SAFE_X + SETTINGS_FOOTER_BUTTON_W + SETTINGS_FOOTER_BUTTON_GAP)
 
 // Gear on Main Page
-#define GEAR_CENTER_X (SAFE_X + 205)
+#define GEAR_CENTER_X (SAFE_X + 300)
 #define GEAR_CENTER_Y (SAFE_Y + 34)
 #define GEAR_TOUCH_SIZE 56
 #define GEAR_BITMAP_W 40
@@ -417,19 +417,29 @@ String formatOneDecimal(double value) {
 }
 
 String currentActivityText() {
+  if (latestStatus.manualOverride &&
+      latestStatus.manualMode.equalsIgnoreCase("Off")) {
+    return "Status: System Off";
+  }
+
+  if (latestStatus.manualOverride &&
+      latestStatus.manualMode.equalsIgnoreCase("Fan")) {
+    return "Status: Manual Fan";
+  }
+
   if (latestStatus.heat) {
-    return "Currently heating";
+    return "Status: Heating";
   }
 
   if (latestStatus.cool) {
-    return "Currently cooling";
+    return "Status: Cooling";
   }
 
   if (latestStatus.fan) {
-    return "Currently fanning";
+    return "Status: Fan";
   }
 
-  return "Currently off";
+  return "Status: System Off";
 }
 
 void getBounds(
@@ -624,12 +634,12 @@ void drawTopBar() {
   String outside = "Outside: ";
   outside += formatOneDecimal(latestStatus.outsideTemperature);
 
-  printAtString(SAFE_X, SAFE_Y + 20, outside);
+  printAtString(SAFE_X + 10, SAFE_Y + 20, outside);
 }
 
 void drawLargeTemperature() {
-  const int areaX = SAFE_X;
-  const int areaY = SAFE_Y + 40;
+  const int areaX = SAFE_X + 30;
+  const int areaY = SAFE_Y + 32;
   const int areaW = 245;
   const int areaH = 125;
 
@@ -682,8 +692,8 @@ void drawLargeTemperature() {
 }
 
 void drawHumidityPanel() {
-  int x = SAFE_X + 268;
-  int y = SAFE_Y + 48;
+  int x = SAFE_X + 290;  // was 268
+  int y = SAFE_Y + 90; // was 48
 
   setFontMedium(HVAC_TEXT);
   printAt(x, y, "Humidity");
@@ -692,19 +702,19 @@ void drawHumidityPanel() {
 
   String out = "Out: ";
   out += formatOneDecimal(latestStatus.outsideAbsoluteHumidity);
-  printAtString(x, y + 34, out);
+  printAtString(x, y + 25, out);
 
   String up = "Up: ";
   up += formatOneDecimal(latestStatus.upstairsAbsoluteHumidity);
-  printAtString(x, y + 62, up);
+  printAtString(x, y + 50, up);
 
   String down = "Down: ";
   down += formatOneDecimal(latestStatus.downstairsAbsoluteHumidity);
-  printAtString(x, y + 90, down);
+  printAtString(x, y + 75, down);
 }
 
 void drawCurrentActivity() {
-  int x = SAFE_X + 268;
+  int x = SAFE_X + 10;  // was 268
   int y = SAFE_Y + 170;
 
   setFontSmall(HVAC_TEXT);
@@ -1576,7 +1586,7 @@ void handleTouchPress(int x, int y) {
   }
 
   if (currentScreen == SCREEN_SETTINGS) {
-    
+
     if (isSettingsExitTouch(x, y)) {
       Serial.println("Settings exit touched.");
 

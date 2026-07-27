@@ -82,8 +82,26 @@ int currentScreen = SCREEN_MAIN;
 #define MODE_ANIMATION_STEPS 14
 #define MODE_ANIMATION_DELAY_MS 16
 
-int bottomBarHeatW = SAFE_W - MODE_SMALL_W;
+#define SETTINGS_FLASH_INTERVAL_MS 500
 
+#define SETTINGS_UP_ARROW_Y (SAFE_Y + 42)
+#define SETTINGS_DOWN_ARROW_Y (SAFE_Y + 118)
+
+enum SettingTarget {
+  SETTING_TARGET_NONE,
+  SETTING_TARGET_FAIR_HUMIDITY,
+  SETTING_TARGET_GOOD_HUMIDITY,
+  SETTING_TARGET_IDEAL_HUMIDITY,
+  SETTING_TARGET_DAY_HEATING,
+  SETTING_TARGET_NIGHT_HEATING
+};
+
+SettingTarget currentSettingTarget = SETTING_TARGET_NONE;
+
+bool settingsFlashOn = true;
+unsigned long lastSettingsFlashMs = 0;
+
+int bottomBarHeatW = SAFE_W - MODE_SMALL_W;
 
 bool touchReady = false;
 unsigned long lastTouchLogMs = 0;
@@ -151,6 +169,8 @@ struct HvacStatus {
   bool heat = false;
   bool cool = false;
   bool fan = false;
+  bool manualOverride = false;
+  String manualMode = "Off";
 
   String reason = "Waiting";
   String mode = "Heat";
@@ -166,12 +186,27 @@ struct HvacStatus {
   double outsideTemperature = NAN;
   double outsideAbsoluteHumidity = NAN;
 
-  double fairHumidityTarget = NAN;
-  double goodHumidityTarget = NAN;
-  double idealHumidityTarget = NAN;
+  double humidityTargetFair = NAN;
+  double humidityTargetGood = NAN;
+  double humidityTargetIdeal = NAN;
 };
 
 HvacStatus latestStatus;
+
+struct SettingsDraft {
+  double heatSetPointDay = NAN;
+  double heatSetPointNight = NAN;
+
+  double humidityTargetFair = NAN;
+  double humidityTargetGood = NAN;
+  double humidityTargetIdeal = NAN;
+
+  bool manualOverride = false;
+  String manualMode = "Off";
+};
+
+SettingsDraft settingsDraft;
+bool settingsDraftActive = false;
 
 unsigned long lastPublishMs = 0;
 const unsigned long publishIntervalMs = 30000;
@@ -250,12 +285,121 @@ void printAtString(int x, int y, const String& text) {
   gfx->print(text);
 }
 
+double roundToTenths(double value) {
+  return round(value * 10.0) / 10.0;
+}
+
+double clampSettingValue(SettingTarget target, double value) {
+  switch (target) {
+    case SETTING_TARGET_FAIR_HUMIDITY:
+    case SETTING_TARGET_GOOD_HUMIDITY:
+    case SETTING_TARGET_IDEAL_HUMIDITY:
+      return constrain(value, 0.0, 30.0);
+
+    case SETTING_TARGET_DAY_HEATING:
+    case SETTING_TARGET_NIGHT_HEATING:
+      return constrain(value, 50.0, 85.0);
+
+    default:
+      return value;
+  }
+}
+
+double getCurrentSettingTargetValue() {
+  switch (currentSettingTarget) {
+    case SETTING_TARGET_FAIR_HUMIDITY:
+      return settingsDraft.humidityTargetFair;
+
+    case SETTING_TARGET_GOOD_HUMIDITY:
+      return settingsDraft.humidityTargetGood;
+
+    case SETTING_TARGET_IDEAL_HUMIDITY:
+      return settingsDraft.humidityTargetIdeal;
+
+    case SETTING_TARGET_DAY_HEATING:
+      return settingsDraft.heatSetPointDay;
+
+    case SETTING_TARGET_NIGHT_HEATING:
+      return settingsDraft.heatSetPointNight;
+
+    default:
+      return NAN;
+  }
+}
+
+void copySettingsDraftFromLatestStatus() {
+  settingsDraft.heatSetPointDay = latestStatus.heatSetPointDay;
+  settingsDraft.heatSetPointNight = latestStatus.heatSetPointNight;
+
+  settingsDraft.humidityTargetFair = latestStatus.humidityTargetFair;
+  settingsDraft.humidityTargetGood = latestStatus.humidityTargetGood;
+  settingsDraft.humidityTargetIdeal = latestStatus.humidityTargetIdeal;
+
+  settingsDraft.manualOverride = latestStatus.manualOverride;
+  settingsDraft.manualMode = latestStatus.manualMode;
+
+  settingsDraftActive = true;
+}
+
+void setCurrentSettingTargetValue(double value) {
+  switch (currentSettingTarget) {
+    case SETTING_TARGET_FAIR_HUMIDITY:
+      settingsDraft.humidityTargetFair = value;
+      break;
+
+    case SETTING_TARGET_GOOD_HUMIDITY:
+      settingsDraft.humidityTargetGood = value;
+      break;
+
+    case SETTING_TARGET_IDEAL_HUMIDITY:
+      settingsDraft.humidityTargetIdeal = value;
+      break;
+
+    case SETTING_TARGET_DAY_HEATING:
+      settingsDraft.heatSetPointDay = value;
+      break;
+
+    case SETTING_TARGET_NIGHT_HEATING:
+      settingsDraft.heatSetPointNight = value;
+      break;
+
+    default:
+      break;
+  }
+}
+
+void adjustCurrentSettingTarget(double delta) {
+  if (currentSettingTarget == SETTING_TARGET_NONE) {
+    return;
+  }
+
+  double value = getCurrentSettingTargetValue();
+
+  if (isnan(value)) {
+    return;
+  }
+
+  value = roundToTenths(value + delta);
+  value = clampSettingValue(currentSettingTarget, value);
+
+  setCurrentSettingTargetValue(value);
+
+  settingsFlashOn = true;
+  lastSettingsFlashMs = millis();
+
+  drawSettingsScreen();
+}
+
 String formatSetPoint(double value) {
   if (isnan(value)) {
     return "--";
   }
 
   return String(value, 1);
+}
+
+String formatBoolOnOff(bool value) {
+  return value ? "On" : "Off";
 }
 
 String formatOneDecimal(double value) {
@@ -331,7 +475,7 @@ void drawSettingsFooterButton(
   int w,
   int h,
   const char* label,
-  const char* value) {
+  const String& value) {
   gfx->drawRect(x, y, w, h, HVAC_LINE);
 
   setFontSmall(HVAC_TEXT);
@@ -352,7 +496,18 @@ void drawSettingsValueBox(
   int y,
   int w,
   int h,
-  const String& value) {
+  const String& value,
+  bool selected) {
+  gfx->fillRect(x - 3, y - 3, w + 6, h + 6, HVAC_BG);
+
+  if (selected && !settingsFlashOn) {
+    return;
+  }
+
+  if (selected) {
+    gfx->drawRect(x - 3, y - 3, w + 6, h + 6, HVAC_TEXT);
+  }
+
   gfx->drawRect(x, y, w, h, HVAC_LINE);
 
   setFontMedium(HVAC_TEXT);
@@ -374,7 +529,8 @@ void drawSettingsValueBox(
 void drawSettingsRow(
   int y,
   const char* label,
-  const String& value) {
+  const String& value,
+  SettingTarget target) {
   setFontSmall(HVAC_TEXT);
 
   int16_t x1;
@@ -394,7 +550,8 @@ void drawSettingsRow(
     y,
     SETTINGS_VALUE_W,
     SETTINGS_VALUE_H,
-    value);
+    value,
+    currentSettingTarget == target);
 }
 
 void drawCenteredTextInBox(
@@ -571,6 +728,27 @@ String normalizeMode(const String& mode) {
   return "";
 }
 
+void updateSettingsFlash() {
+  if (currentScreen != SCREEN_SETTINGS) {
+    return;
+  }
+
+  if (currentSettingTarget == SETTING_TARGET_NONE) {
+    return;
+  }
+
+  unsigned long now = millis();
+
+  if (now - lastSettingsFlashMs < SETTINGS_FLASH_INTERVAL_MS) {
+    return;
+  }
+
+  settingsFlashOn = !settingsFlashOn;
+  lastSettingsFlashMs = now;
+
+  drawSettingsScreen();
+}
+
 bool updateSelectedModeFromStatus() {
   String statusMode = normalizeMode(latestStatus.mode);
 
@@ -737,13 +915,13 @@ void drawSettingsScreen() {
 
   drawUpArrowButton(
     SETTINGS_ARROW_X,
-    SAFE_Y + 42,
+    SETTINGS_UP_ARROW_Y,
     SETTINGS_ARROW_W,
     SETTINGS_ARROW_H);
 
   drawDownArrowButton(
     SETTINGS_ARROW_X,
-    SAFE_Y + 118,
+    SETTINGS_DOWN_ARROW_Y,
     SETTINGS_ARROW_W,
     SETTINGS_ARROW_H);
 
@@ -752,27 +930,32 @@ void drawSettingsScreen() {
   drawSettingsRow(
     rowY,
     "Fair humidity",
-    formatSetPoint(latestStatus.fairHumidityTarget));
+    formatSetPoint(settingsDraft.humidityTargetFair),
+    SETTING_TARGET_FAIR_HUMIDITY);
 
   drawSettingsRow(
     rowY + SETTINGS_ROW_GAP,
     "Good humidity",
-    formatSetPoint(latestStatus.goodHumidityTarget));
+    formatSetPoint(settingsDraft.humidityTargetGood),
+    SETTING_TARGET_GOOD_HUMIDITY);
 
   drawSettingsRow(
     rowY + (SETTINGS_ROW_GAP * 2),
     "Ideal humidity",
-    formatSetPoint(latestStatus.idealHumidityTarget));
+    formatSetPoint(settingsDraft.humidityTargetIdeal),
+    SETTING_TARGET_IDEAL_HUMIDITY);
 
   drawSettingsRow(
     rowY + (SETTINGS_ROW_GAP * 3),
     "Day heating",
-    formatSetPoint(latestStatus.heatSetPointDay));
+    formatSetPoint(settingsDraft.heatSetPointDay),
+    SETTING_TARGET_DAY_HEATING);
 
   drawSettingsRow(
     rowY + (SETTINGS_ROW_GAP * 4),
     "Night heating",
-    formatSetPoint(latestStatus.heatSetPointNight));
+    formatSetPoint(settingsDraft.heatSetPointNight),
+    SETTING_TARGET_NIGHT_HEATING);
 
   // Footer row
   int footerButtonGap = 10;
@@ -784,7 +967,7 @@ void drawSettingsScreen() {
     footerButtonW,
     SETTINGS_FOOTER_H,
     "Manual Override",
-    "Off");
+    formatBoolOnOff(settingsDraft.manualOverride));
 
   drawSettingsFooterButton(
     SAFE_X + footerButtonW + footerButtonGap,
@@ -792,7 +975,7 @@ void drawSettingsScreen() {
     footerButtonW,
     SETTINGS_FOOTER_H,
     "Manual Mode",
-    "Off");
+    settingsDraft.manualMode);
 
   gfx->flush();
 }
@@ -929,6 +1112,13 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
   latestStatus.heatSetPointNight = doc["heatSetPointNight"] | NAN;
   latestStatus.maxAbsHumSetPoint = doc["maxAbsHumSetPoint"] | NAN;
 
+  latestStatus.humidityTargetIdeal = doc["humidityTargetIdeal"] | NAN;
+  latestStatus.humidityTargetGood = doc["humidityTargetGood"] | NAN;
+  latestStatus.humidityTargetFair = doc["humidityTargetFair"] | NAN;
+
+  latestStatus.manualOverride = doc["manualOverride"] | false;
+  latestStatus.manualMode = doc["manualMode"] | "Off";
+
   latestStatus.upstairsTemperature = doc["upstairsTemperature"] | NAN;
   latestStatus.upstairsAbsoluteHumidity = doc["upstairsAbsoluteHumidity"] | NAN;
   latestStatus.downstairsAbsoluteHumidity = doc["downstairsAbsoluteHumidity"] | NAN;
@@ -944,20 +1134,13 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
   Serial.print(" pendingMode=");
   Serial.println(pendingMode);
 
-  if (pendingMode != "") {
-    bottomBarHeatW = getTargetHeatWidth();
-
-    if (currentScreen == SCREEN_SETTINGS) {
-      drawSettingsScreen();
-    } else {
-      drawThermostatScreen();
-    }
-
+  if (currentScreen == SCREEN_SETTINGS) {
     return;
   }
 
-  if (currentScreen == SCREEN_SETTINGS) {
-    drawSettingsScreen();
+  if (pendingMode != "") {
+    bottomBarHeatW = getTargetHeatWidth();
+    drawThermostatScreen();
     return;
   }
 
@@ -966,6 +1149,7 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
   if (modeChanged) {
     animateBottomBarToSelectedMode();
   }
+
 }
 
 void handleMqttConnection() {
@@ -1195,6 +1379,69 @@ bool isValidScreenTouch(int x, int y) {
   return x >= 0 && x < SCREEN_W && y >= 0 && y < SCREEN_H;
 }
 
+bool isTouchInRect(int x, int y, int rectX, int rectY, int rectW, int rectH) {
+  return x >= rectX &&
+         x <= rectX + rectW &&
+         y >= rectY &&
+         y <= rectY + rectH;
+}
+
+bool isSettingsUpArrowTouch(int x, int y) {
+  return isTouchInRect(
+    x,
+    y,
+    SETTINGS_ARROW_X,
+    SETTINGS_UP_ARROW_Y,
+    SETTINGS_ARROW_W,
+    SETTINGS_ARROW_H);
+}
+
+bool isSettingsDownArrowTouch(int x, int y) {
+  return isTouchInRect(
+    x,
+    y,
+    SETTINGS_ARROW_X,
+    SETTINGS_DOWN_ARROW_Y,
+    SETTINGS_ARROW_W,
+    SETTINGS_ARROW_H);
+}
+
+bool isSettingsValueBoxTouch(int x, int y, int rowY) {
+  return isTouchInRect(
+    x,
+    y,
+    SETTINGS_VALUE_X,
+    rowY,
+    SETTINGS_VALUE_W,
+    SETTINGS_VALUE_H);
+}
+
+SettingTarget getSettingsTargetAtTouch(int x, int y) {
+  int rowY = SETTINGS_ROW_START_Y;
+
+  if (isSettingsValueBoxTouch(x, y, rowY)) {
+    return SETTING_TARGET_FAIR_HUMIDITY;
+  }
+
+  if (isSettingsValueBoxTouch(x, y, rowY + SETTINGS_ROW_GAP)) {
+    return SETTING_TARGET_GOOD_HUMIDITY;
+  }
+
+  if (isSettingsValueBoxTouch(x, y, rowY + (SETTINGS_ROW_GAP * 2))) {
+    return SETTING_TARGET_IDEAL_HUMIDITY;
+  }
+
+  if (isSettingsValueBoxTouch(x, y, rowY + (SETTINGS_ROW_GAP * 3))) {
+    return SETTING_TARGET_DAY_HEATING;
+  }
+
+  if (isSettingsValueBoxTouch(x, y, rowY + (SETTINGS_ROW_GAP * 4))) {
+    return SETTING_TARGET_NIGHT_HEATING;
+  }
+
+  return SETTING_TARGET_NONE;
+}
+
 bool isGearTouch(int x, int y) {
   int half = GEAR_TOUCH_SIZE / 2;
 
@@ -1247,6 +1494,12 @@ void handleTouchPress(int x, int y) {
   if (currentScreen == SCREEN_MAIN && isGearTouch(x, y)) {
     Serial.println("Gear/settings touched.");
 
+    copySettingsDraftFromLatestStatus();
+
+    currentSettingTarget = SETTING_TARGET_NONE;
+    settingsFlashOn = true;
+    lastSettingsFlashMs = millis();
+
     currentScreen = SCREEN_SETTINGS;
     drawSettingsScreen();
 
@@ -1254,17 +1507,46 @@ void handleTouchPress(int x, int y) {
   }
 
   if (currentScreen == SCREEN_SETTINGS) {
-  if (isSettingsExitTouch(x, y)) {
-    Serial.println("Settings exit touched.");
+    if (isSettingsExitTouch(x, y)) {
+      Serial.println("Settings exit touched.");
 
-    currentScreen = SCREEN_MAIN;
-    drawThermostatScreen();
+      settingsDraftActive = false;
+      currentSettingTarget = SETTING_TARGET_NONE;
 
+      currentScreen = SCREEN_MAIN;
+      drawThermostatScreen();
+
+      return;
+    }
+
+    if (isSettingsUpArrowTouch(x, y)) {
+      Serial.println("Settings up arrow touched.");
+      adjustCurrentSettingTarget(0.1);
+      return;
+    }
+
+    if (isSettingsDownArrowTouch(x, y)) {
+      Serial.println("Settings down arrow touched.");
+      adjustCurrentSettingTarget(-0.1);
+      return;
+    }
+
+    SettingTarget touchedTarget = getSettingsTargetAtTouch(x, y);
+
+    if (touchedTarget != SETTING_TARGET_NONE) {
+      Serial.println("Settings value touched.");
+
+      currentSettingTarget = touchedTarget;
+      settingsFlashOn = true;
+      lastSettingsFlashMs = millis();
+
+      drawSettingsScreen();
+
+      return;
+    }
+
+    Serial.println("Settings screen touched.");
     return;
-  }
-
-  Serial.println("Settings screen touched.");
-  return;
   }
 
   int barY = SAFE_Y + SAFE_H - BOTTOM_BAR_H;
@@ -1295,6 +1577,9 @@ void pollTouch() {
   }
 
   static bool touchWasDown = false;
+  static unsigned long lastTouchSeenMs = 0;
+
+  const unsigned long touchReleaseDebounceMs = 250;
 
   bsp_touch_read();
 
@@ -1303,9 +1588,15 @@ void pollTouch() {
   bool hasTouch = bsp_touch_get_coordinates(&touchData);
 
   if (!hasTouch) {
-    touchWasDown = false;
+    if (touchWasDown &&
+        millis() - lastTouchSeenMs >= touchReleaseDebounceMs) {
+      touchWasDown = false;
+    }
+
     return;
   }
+
+  lastTouchSeenMs = millis();
 
   int rawX = touchData.coords[0].x;
   int rawY = touchData.coords[0].y;
@@ -1326,15 +1617,6 @@ void pollTouch() {
   }
 
   touchWasDown = true;
-
-  // Serial.print("Touch raw X=");
-  // Serial.print(rawX);
-  // Serial.print(" Y=");
-  // Serial.print(rawY);
-  // Serial.print(" -> screen X=");
-  // Serial.print(x);
-  // Serial.print(" Y=");
-  // Serial.println(y);
 
   handleTouchPress(x, y);
 }
@@ -1378,4 +1660,7 @@ void loop() {
     lastPublishMs = now;
     publishUpstairsSensorReading();
   }
+
+  updateSettingsFlash();
+
 }

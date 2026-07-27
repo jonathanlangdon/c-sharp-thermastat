@@ -175,6 +175,11 @@ mosquitto_pub -h localhost -t hvac/upstairs/sensor -m '{
 mosquitto_sub -h localhost -t hvac/status -C 1 -v
 mosquitto_sub -h localhost -t hvac/upstairs/sensor -v
 
+Better format:
+
+mosquitto_sub -h hvac.local -t upstairs/status -F '%I %p' | while read -r ts json; do     echo "$ts";     echo "$json" | jq -M .;     echo; done
+
+mosquitto_sub -h hvac.local -t hvac/upstairs/sensor -F '%I %p' | while read -r ts json; do     echo "$ts";     echo "$json" | jq -M .;     echo; done
 
 ## Outside Weather Source
 

@@ -34,6 +34,7 @@
 
 #define SCREEN_MAIN 0
 #define SCREEN_SETTINGS 1
+#define SCREEN_STATS 2
 
 int currentScreen = SCREEN_MAIN;
 
@@ -43,6 +44,7 @@ int currentScreen = SCREEN_MAIN;
 #define SAFE_BOTTOM_MARGIN 40
 #define SAFE_W (SCREEN_W - SAFE_X - SAFE_RIGHT_MARGIN)
 #define SAFE_H (SCREEN_H - SAFE_Y - SAFE_BOTTOM_MARGIN)
+#define STATS_X (SAFE_X + 20)
 
 // Settings Page Constants
 #define SETTINGS_ARROW_X (SAFE_X + 14)
@@ -72,10 +74,19 @@ int currentScreen = SCREEN_MAIN;
 #define SETTINGS_MANUAL_OVERRIDE_X SAFE_X
 #define SETTINGS_MANUAL_MODE_X (SAFE_X + SETTINGS_FOOTER_BUTTON_W + SETTINGS_FOOTER_BUTTON_GAP)
 
-// Gear on Main Page
-#define GEAR_CENTER_X (SAFE_X + 300)
-#define GEAR_CENTER_Y (SAFE_Y + 34)
-#define GEAR_TOUCH_SIZE 56
+// Top Main Page Icons
+#define TOP_ICON_CENTER_Y (SAFE_Y + 34)
+
+#define STATS_CENTER_X (SAFE_X + 230)
+#define WINDOW_BREEZE_CENTER_X (SAFE_X + 295)
+#define GEAR_CENTER_X (SAFE_X + 365)
+
+#define TOP_ICON_TOUCH_SIZE 56
+#define TOP_ICON_BITMAP_W 40
+#define TOP_ICON_BITMAP_H 40
+
+#define GEAR_CENTER_Y TOP_ICON_CENTER_Y
+#define GEAR_TOUCH_SIZE TOP_ICON_TOUCH_SIZE
 #define GEAR_BITMAP_W 40
 #define GEAR_BITMAP_H 40
 
@@ -135,6 +146,16 @@ const char* STATUS_TOPIC = "hvac/status";
 const char* MODE_SET_TOPIC = "hvac/mode/set";
 const char* SETTINGS_SET_TOPIC = "hvac/settings/set";
 
+bool windowToggle = false;
+bool shouldOpenWindows = false;
+bool pendingWindowManualOn = false;
+bool pendingWindowManualOff = false;
+unsigned long pendingWindowManualStartedMs = 0;
+const unsigned long pendingWindowManualTimeoutMs = 15000;
+
+unsigned long lastWindSoundMs = 0;
+const unsigned long windSoundIntervalMs = 180000; // 3 minutes
+
 TCA9554 TCA(0x20);
 
 Arduino_DataBus* bus = new Arduino_ESP32QSPI(
@@ -164,12 +185,25 @@ Arduino_Canvas* gfx = new Arduino_Canvas(
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
 
+#define HVAC_NORMAL_BG RGB565_BLACK
+#define HVAC_NORMAL_TEXT RGB565_WHITE
+#define HVAC_NORMAL_LINE 0x7BEF
 
-#define HVAC_BG RGB565_BLACK
-#define HVAC_TEXT RGB565_WHITE
-#define HVAC_LINE 0x7BEF
+#define HVAC_WINDOW_BG RGB565_WHITE
+#define HVAC_WINDOW_TEXT 0x001F
+#define HVAC_WINDOW_LINE 0x001F
+
+uint16_t hvacBg = HVAC_NORMAL_BG;
+uint16_t hvacText = HVAC_NORMAL_TEXT;
+uint16_t hvacLine = HVAC_NORMAL_LINE;
+
+#define HVAC_BG hvacBg
+#define HVAC_TEXT hvacText
+#define HVAC_LINE hvacLine
+
 #define HVAC_HEAT_FILL 0xF800
 #define HVAC_COOL_FILL 0x001F
+
 
 struct HvacStatus {
   bool heat = false;
@@ -177,9 +211,10 @@ struct HvacStatus {
   bool fan = false;
   bool manualOverride = false;
   String manualMode = "Off";
-
+  
   String reason = "Waiting";
   String mode = "Heat";
+  String now = "";
 
   double heatSetPointFahr = NAN;
   double heatSetPointDay = NAN;
@@ -187,10 +222,27 @@ struct HvacStatus {
   double maxAbsHumSetPoint = NAN;
 
   double upstairsTemperature = NAN;
+  double upstairsRelativeHumidity = NAN;
   double upstairsAbsoluteHumidity = NAN;
+  double downstairsTemperature = NAN;
+  double downstairsRelativeHumidity = NAN;
   double downstairsAbsoluteHumidity = NAN;
   double outsideTemperature = NAN;
   double outsideAbsoluteHumidity = NAN;
+  double controlAbsoluteHumidity = NAN;
+
+  double upTempCalibration = NAN;
+  double upRelHumCalibration = NAN;
+  double downTempCalibration = NAN;
+  double downRelHumCalibration = NAN;
+
+  double coolHoursToday = NAN;
+  double heatHoursToday = NAN;
+
+  String lastHeatStarted = "";
+  String lastHeatStopped = "";
+  String lastCoolStarted = "";
+  String lastCoolStopped = "";
 
   double humidityTargetFair = NAN;
   double humidityTargetGood = NAN;
@@ -226,6 +278,72 @@ const unsigned long mqttRetryIntervalMs = 5000;
 bool wifiWasConnected = false;
 bool mqttWasConnected = false;
 
+void applyManualOverrideLocally(bool manualOverride, const String& manualMode) {
+  latestStatus.manualOverride = manualOverride;
+  latestStatus.manualMode = manualMode;
+
+  latestStatus.heat = false;
+  latestStatus.cool = false;
+
+  if (manualOverride && manualMode.equalsIgnoreCase("Fan")) {
+    latestStatus.fan = true;
+  } else {
+    latestStatus.fan = false;
+  }
+}
+
+void updateWindowToggleFromMqtt() {
+  if (pendingWindowManualOn) {
+    if (isManualFanStatus()) {
+      Serial.println("Window manual fan confirmed by MQTT.");
+      pendingWindowManualOn = false;
+      return;
+    }
+
+    if (millis() - pendingWindowManualStartedMs > pendingWindowManualTimeoutMs) {
+      Serial.println("Window manual fan command timed out.");
+      pendingWindowManualOn = false;
+      windowToggle = false;
+    }
+
+    return;
+  }
+
+  if (pendingWindowManualOff) {
+    if (!latestStatus.manualOverride) {
+      Serial.println("Window manual fan off confirmed by MQTT.");
+      pendingWindowManualOff = false;
+      windowToggle = false;
+      return;
+    }
+
+    if (millis() - pendingWindowManualStartedMs > pendingWindowManualTimeoutMs) {
+      Serial.println("Window manual fan off command timed out.");
+      pendingWindowManualOff = false;
+    }
+
+    return;
+  }
+
+  // If the user turns off Manual Override from the settings page,
+  // clear the local window latch once MQTT confirms it.
+  if (!latestStatus.manualOverride) {
+    windowToggle = false;
+  }
+}
+
+void updateWindowTheme() {
+  if (isWindowThemeActive()) {
+    hvacBg = HVAC_WINDOW_BG;
+    hvacText = HVAC_WINDOW_TEXT;
+    hvacLine = HVAC_WINDOW_LINE;
+    return;
+  }
+
+  hvacBg = HVAC_NORMAL_BG;
+  hvacText = HVAC_NORMAL_TEXT;
+  hvacLine = HVAC_NORMAL_LINE;
+}
 
 void initTouch() {
   Serial.println("Initializing AXS15231B touch...");
@@ -252,14 +370,36 @@ void initDisplay() {
   TCA.write1(1, 1);
   delay(200);
 
-  initTouch();
-
   if (!gfx->begin()) {
-    Serial.println("gfx->begin() failed!");
+    Serial.println("gfx->begin() failed! Stopping before drawing.");
+    while (true) {
+      delay(1000);
+    }
   }
 
   pinMode(GFX_BL, OUTPUT);
   digitalWrite(GFX_BL, HIGH);
+
+  initTouch();
+}
+
+void playWindSound() {
+  Serial.println("TODO: play wind.wav");
+}
+
+void updateWindSound() {
+  if (!shouldPlayWindSound()) {
+    lastWindSoundMs = 0;
+    return;
+  }
+
+  unsigned long now = millis();
+
+  if (lastWindSoundMs == 0 ||
+      now - lastWindSoundMs >= windSoundIntervalMs) {
+    lastWindSoundMs = now;
+    playWindSound();
+  }
 }
 
 
@@ -396,6 +536,24 @@ void adjustCurrentSettingTarget(double delta) {
   drawSettingsScreen();
 }
 
+String formatTwoDecimals(double value) {
+  if (isnan(value)) {
+    return "--";
+  }
+
+  return String(value, 2);
+}
+
+String formatDateTimeShort(const String& value) {
+  if (value.length() < 16) {
+    return "--";
+  }
+
+  // Example input: 2026-08-04T10:16:47
+  // Output: 08-04 10:16
+  return value.substring(5, 10) + " " + value.substring(11, 16);
+}
+
 String formatSetPoint(double value) {
   if (isnan(value)) {
     return "--";
@@ -417,6 +575,7 @@ String formatOneDecimal(double value) {
 }
 
 String currentActivityText() {
+
   if (latestStatus.manualOverride &&
       latestStatus.manualMode.equalsIgnoreCase("Off")) {
     return "Status: System Off";
@@ -453,6 +612,34 @@ void getBounds(
   gfx->setFont(font);
   gfx->setTextSize(size);
   gfx->getTextBounds(text, 0, 0, x1, y1, w, h);
+}
+
+void drawStatsFullRow(
+  int y,
+  const char* label,
+  const String& value) {
+  gfx->fillRect(SAFE_X, y - 16, SAFE_W, 22, HVAC_BG);
+
+  setFontSmall(HVAC_TEXT);
+
+  String text = String(label) + ": " + value;
+
+  printAtString(SAFE_X + 88, y, text);
+}
+
+void drawStatsColumnRow(
+  int x,
+  int y,
+  int w,
+  const char* label,
+  const String& value) {
+  gfx->fillRect(x, y - 15, w, 20, HVAC_BG);
+
+  setFontSmall(HVAC_TEXT);
+
+  String text = String(label) + ": " + value;
+
+  printAtString(x, y, text);
 }
 
 void drawUpArrowButton(int x, int y, int w, int h) {
@@ -592,6 +779,92 @@ void drawCenteredTextInBox(
   gfx->print(text);
 }
 
+static const unsigned char statsBitmap[] PROGMEM = {
+  0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x07, 0xC0, 0x00, 0x00,
+  0x00, 0x0F, 0xC0, 0x00, 0x00,
+  0x00, 0x0F, 0xC0, 0x00, 0x00,
+  0x00, 0x0F, 0xC0, 0x00, 0x00,
+  0x00, 0x0F, 0xC0, 0x00, 0x00,
+  0x00, 0x0F, 0xC0, 0x00, 0x00,
+  0x00, 0x0F, 0xC0, 0x00, 0x00,
+  0x00, 0x0F, 0xC0, 0x00, 0x00,
+  0x00, 0x0F, 0xC0, 0x00, 0x00,
+  0x00, 0x0F, 0xC0, 0x00, 0x00,
+  0x00, 0x0F, 0xC0, 0x00, 0x00,
+  0x00, 0x0F, 0xC0, 0x01, 0xF8,
+  0x00, 0x0F, 0xC0, 0x01, 0xF8,
+  0x00, 0x0F, 0xC0, 0x01, 0xF8,
+  0x00, 0x0F, 0xC0, 0x01, 0xF8,
+  0x00, 0x0F, 0xC0, 0x01, 0xF8,
+  0x00, 0x0F, 0xC0, 0x01, 0xF8,
+  0x00, 0x0F, 0xC0, 0x01, 0xF8,
+  0x00, 0x0F, 0xC0, 0x01, 0xF8,
+  0x00, 0x0F, 0xC0, 0x01, 0xF8,
+  0x00, 0x0F, 0xC0, 0x01, 0xF8,
+  0x00, 0x0F, 0xC3, 0xF1, 0xF8,
+  0x00, 0x0F, 0xC3, 0xF1, 0xF8,
+  0x00, 0x0F, 0xC3, 0xF1, 0xF8,
+  0x00, 0x0F, 0xC3, 0xF1, 0xF8,
+  0x00, 0x0F, 0xC3, 0xF1, 0xF8,
+  0x00, 0x0F, 0xC3, 0xF1, 0xF8,
+  0x1F, 0x8F, 0xC3, 0xF1, 0xF8,
+  0x1F, 0x8F, 0xC3, 0xF1, 0xF8,
+  0x1F, 0x8F, 0xC3, 0xF1, 0xF8,
+  0x1F, 0x8F, 0xC3, 0xF1, 0xF8,
+  0x1F, 0x8F, 0xC3, 0xF1, 0xF8,
+  0x1F, 0x8F, 0xC3, 0xF1, 0xF8,
+  0x1F, 0x8F, 0xC3, 0xF1, 0xF8,
+  0x1F, 0x8F, 0xC3, 0xF1, 0xF8,
+  0x1F, 0x8F, 0xC3, 0xF1, 0xF8,
+  0x1F, 0x8F, 0xC3, 0xF1, 0xF8,
+  0x1F, 0x87, 0xC3, 0xE1, 0xF8,
+  0x00, 0x00, 0x00, 0x00, 0x00
+};
+
+static const unsigned char windowBreezeBitmap[] PROGMEM = {
+  0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x0F, 0xFC, 0x7F, 0xFC,
+  0x00, 0x1F, 0xFE, 0xFF, 0xFE,
+  0x00, 0x1C, 0x00, 0x60, 0x0E,
+  0x00, 0x18, 0x00, 0x40, 0x06,
+  0x00, 0x08, 0x00, 0x40, 0x06,
+  0x00, 0x00, 0x00, 0x40, 0x06,
+  0x00, 0x00, 0x00, 0x40, 0x06,
+  0x00, 0x7C, 0x00, 0x40, 0x06,
+  0x00, 0xEC, 0x00, 0x40, 0x06,
+  0x00, 0xC4, 0x00, 0x40, 0x06,
+  0x00, 0xC0, 0x00, 0x40, 0x06,
+  0x00, 0xFF, 0xFC, 0x40, 0x06,
+  0x00, 0x7F, 0xFC, 0x40, 0x06,
+  0x00, 0x00, 0x00, 0x40, 0x06,
+  0x00, 0x00, 0x00, 0x40, 0x06,
+  0x1F, 0xFF, 0xF8, 0x40, 0x06,
+  0x3F, 0xFF, 0xF0, 0x40, 0x06,
+  0x60, 0x00, 0x00, 0x40, 0x06,
+  0x63, 0x09, 0xE0, 0x40, 0x06,
+  0x3F, 0x19, 0xE0, 0x40, 0x06,
+  0x3E, 0x18, 0x00, 0x40, 0x06,
+  0x00, 0x18, 0x00, 0x40, 0x06,
+  0x00, 0x18, 0x00, 0x40, 0x06,
+  0x00, 0x18, 0x00, 0x40, 0x06,
+  0x00, 0x18, 0x00, 0x40, 0x06,
+  0x00, 0x1C, 0x00, 0x60, 0x0E,
+  0x00, 0x1F, 0xFE, 0xFF, 0xFE,
+  0x00, 0x0F, 0xF0, 0x20, 0x08,
+  0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00
+};
+
 static const unsigned char gearBitmap[] PROGMEM = {
   0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x07, 0x80, 0xE0, 0x00,
   0x00, 0x3F, 0x81, 0xFC, 0x00, 0x00, 0x7F, 0x81, 0xFE, 0x00,
@@ -615,6 +888,22 @@ static const unsigned char gearBitmap[] PROGMEM = {
   0x00, 0x0F, 0x80, 0xF0, 0x00, 0x00, 0x03, 0x00, 0xC0, 0x00
 };
 
+void drawTopIcon(
+  int centerX,
+  int centerY,
+  const unsigned char* bitmap) {
+  int x = centerX - (TOP_ICON_BITMAP_W / 2);
+  int y = centerY - (TOP_ICON_BITMAP_H / 2);
+
+  gfx->drawBitmap(
+    x,
+    y,
+    bitmap,
+    TOP_ICON_BITMAP_W,
+    TOP_ICON_BITMAP_H,
+    HVAC_TEXT);
+}
+
 void drawGearIcon() {
   int x = GEAR_CENTER_X - (GEAR_BITMAP_W / 2);
   int y = GEAR_CENTER_Y - (GEAR_BITMAP_H / 2);
@@ -626,6 +915,20 @@ void drawGearIcon() {
     GEAR_BITMAP_W,
     GEAR_BITMAP_H,
     HVAC_TEXT);
+}
+
+void drawStatsIcon() {
+  drawTopIcon(
+    STATS_CENTER_X,
+    TOP_ICON_CENTER_Y,
+    statsBitmap);
+}
+
+void drawWindowBreezeIcon() {
+  drawTopIcon(
+    WINDOW_BREEZE_CENTER_X,
+    TOP_ICON_CENTER_Y,
+    windowBreezeBitmap);
 }
 
 void drawTopBar() {
@@ -722,6 +1025,64 @@ void drawCurrentActivity() {
   String activity = currentActivityText();
 
   printAtString(x, y, activity);
+}
+
+int getLatestStatusHour() {
+  if (latestStatus.now.length() < 13) {
+    return -1;
+  }
+
+  return latestStatus.now.substring(11, 13).toInt();
+}
+
+bool isWindowReminderTime() {
+  int hour = getLatestStatusHour();
+
+  return hour >= 6 && hour < 22;
+}
+
+bool calculateShouldOpenWindows() {
+  bool conditionOne =
+    !isnan(latestStatus.upstairsTemperature) &&
+    !isnan(latestStatus.outsideAbsoluteHumidity) &&
+    !isnan(latestStatus.controlAbsoluteHumidity) &&
+    latestStatus.upstairsTemperature > 70.0 &&
+    latestStatus.outsideAbsoluteHumidity < 10.0 &&
+    latestStatus.controlAbsoluteHumidity > 9.0;
+
+  bool conditionTwo =
+    !isnan(latestStatus.outsideAbsoluteHumidity) &&
+    !isnan(latestStatus.outsideTemperature) &&
+    latestStatus.outsideAbsoluteHumidity < 20.0 &&  // should be 10
+    latestStatus.outsideTemperature > 60.0;
+
+  return conditionOne || conditionTwo;
+}
+
+bool isManualFanStatus() {
+  return latestStatus.manualOverride &&
+         latestStatus.manualMode.equalsIgnoreCase("Fan");
+}
+
+bool isWindowModeActive() {
+  return windowToggle &&
+         (isManualFanStatus() || pendingWindowManualOn);
+}
+
+bool isWindowPromptActive() {
+  return !isWindowModeActive() &&
+         !latestStatus.manualOverride &&
+         !windowToggle &&
+         isWindowReminderTime() &&
+         shouldOpenWindows;
+}
+
+bool isWindowThemeActive() {
+  return isWindowModeActive() || isWindowPromptActive();
+}
+
+bool shouldPlayWindSound() {
+  return isWindowPromptActive();
 }
 
 int getTargetHeatWidth() {
@@ -845,7 +1206,7 @@ void drawBottomBar() {
   gfx->drawLine(SAFE_X, barBottom, SAFE_X + SAFE_W - 1, barBottom, HVAC_LINE);
   gfx->drawLine(coolX, barY, coolX, barBottom, HVAC_LINE);
 
-  setFontMedium(HVAC_TEXT);
+  setFontMedium(HVAC_NORMAL_TEXT);
 
   drawCenteredTextInBox(
     heatX,
@@ -853,7 +1214,7 @@ void drawBottomBar() {
     heatW,
     barH,
     heatLabel.c_str(),
-    HVAC_TEXT);
+    HVAC_NORMAL_TEXT);
 
   drawCenteredTextInBox(
     coolX,
@@ -861,7 +1222,7 @@ void drawBottomBar() {
     coolW,
     barH,
     coolLabel.c_str(),
-    HVAC_TEXT);
+    HVAC_NORMAL_TEXT);
 }
 
 void animateBottomBarToSelectedMode() {
@@ -894,14 +1255,167 @@ void animateBottomBarToSelectedMode() {
 }
 
 void drawThermostatScreen() {
+  updateWindowTheme();
+
   gfx->fillScreen(HVAC_BG);
 
   drawTopBar();
+  drawStatsIcon();
+  drawWindowBreezeIcon();
   drawGearIcon();
   drawLargeTemperature();
   drawHumidityPanel();
   drawCurrentActivity();
   drawBottomBar();
+
+  gfx->flush();
+}
+
+void drawStatsScreen() {
+  gfx->fillScreen(HVAC_BG);
+
+  // Exit button
+  gfx->drawRect(
+    SETTINGS_EXIT_X,
+    SETTINGS_EXIT_Y,
+    SETTINGS_EXIT_W,
+    SETTINGS_EXIT_H,
+    HVAC_LINE);
+
+  setFontMedium(HVAC_TEXT);
+  drawCenteredTextInBox(
+    SETTINGS_EXIT_X,
+    SETTINGS_EXIT_Y,
+    SETTINGS_EXIT_W,
+    SETTINGS_EXIT_H,
+    "Exit",
+    HVAC_TEXT);
+
+  drawStatsFullRow(
+    SAFE_Y + 52,
+    "Hvac Status",
+    latestStatus.reason);
+
+  int colGap = 10;
+  int colW = (SAFE_W - 10 - colGap) / 2;
+
+  int leftX = STATS_X;
+  int rightX = STATS_X + colW + colGap;
+
+  int startY = SAFE_Y + 80;
+  int rowGap = 18;
+
+  drawStatsColumnRow(
+    leftX,
+    startY,
+    colW,
+    "Up temp cal",
+    formatOneDecimal(latestStatus.upTempCalibration));
+
+  drawStatsColumnRow(
+    leftX,
+    startY + rowGap,
+    colW,
+    "Up RH cal",
+    formatOneDecimal(latestStatus.upRelHumCalibration));
+
+  drawStatsColumnRow(
+    leftX,
+    startY + (rowGap * 2),
+    colW,
+    "Down temp cal",
+    formatOneDecimal(latestStatus.downTempCalibration));
+
+  drawStatsColumnRow(
+    leftX,
+    startY + (rowGap * 3),
+    colW,
+    "Down RH cal",
+    formatOneDecimal(latestStatus.downRelHumCalibration));
+
+  drawStatsColumnRow(
+    leftX,
+    startY + (rowGap * 4),
+    colW,
+    "Up temp",
+    formatOneDecimal(latestStatus.upstairsTemperature));
+
+  drawStatsColumnRow(
+    leftX,
+    startY + (rowGap * 5),
+    colW,
+    "Up RH",
+    formatOneDecimal(latestStatus.upstairsRelativeHumidity));
+
+  drawStatsColumnRow(
+    leftX,
+    startY + (rowGap * 6),
+    colW,
+    "Up abs hum",
+    formatTwoDecimals(latestStatus.upstairsAbsoluteHumidity));
+
+  drawStatsColumnRow(
+    leftX,
+    startY + (rowGap * 7),
+    colW,
+    "Cool hrs",
+    formatTwoDecimals(latestStatus.coolHoursToday));
+
+  drawStatsColumnRow(
+    rightX,
+    startY,
+    colW,
+    "Down temp",
+    formatOneDecimal(latestStatus.downstairsTemperature));
+
+  drawStatsColumnRow(
+    rightX,
+    startY + rowGap,
+    colW,
+    "Down RH",
+    formatOneDecimal(latestStatus.downstairsRelativeHumidity));
+
+  drawStatsColumnRow(
+    rightX,
+    startY + (rowGap * 2),
+    colW,
+    "Down abs hum",
+    formatTwoDecimals(latestStatus.downstairsAbsoluteHumidity));
+
+  drawStatsColumnRow(
+    rightX,
+    startY + (rowGap * 3),
+    colW,
+    "Heat hrs",
+    formatTwoDecimals(latestStatus.heatHoursToday));
+
+  drawStatsColumnRow(
+    rightX,
+    startY + (rowGap * 4),
+    colW,
+    "Heat start",
+    formatDateTimeShort(latestStatus.lastHeatStarted));
+
+  drawStatsColumnRow(
+    rightX,
+    startY + (rowGap * 5),
+    colW,
+    "Heat stop",
+    formatDateTimeShort(latestStatus.lastHeatStopped));
+
+  drawStatsColumnRow(
+    rightX,
+    startY + (rowGap * 6),
+    colW,
+    "Cool start",
+    formatDateTimeShort(latestStatus.lastCoolStarted));
+
+  drawStatsColumnRow(
+    rightX,
+    startY + (rowGap * 7),
+    colW,
+    "Cool stop",
+    formatDateTimeShort(latestStatus.lastCoolStopped));
 
   gfx->flush();
 }
@@ -1048,6 +1562,49 @@ void toggleManualMode() {
   drawSettingsScreen();
 }
 
+void handleWindowBreezeTouch() {
+  if (isWindowModeActive()) {
+    Serial.println("Window mode active. Turning off manual override.");
+
+    windowToggle = false;
+    pendingWindowManualOn = false;
+    pendingWindowManualOff = true;
+    pendingWindowManualStartedMs = millis();
+
+    applyManualOverrideLocally(false, "Off");
+    publishWindowManualSettings(false, "Off");
+
+    drawThermostatScreen();
+    return;
+  }
+
+  if (isWindowPromptActive()) {
+    Serial.println("Window prompt active. Turning on manual fan.");
+
+    windowToggle = true;
+    pendingWindowManualOn = true;
+    pendingWindowManualOff = false;
+    pendingWindowManualStartedMs = millis();
+
+    applyManualOverrideLocally(true, "Fan");
+    publishWindowManualSettings(true, "Fan");
+
+    drawThermostatScreen();
+    return;
+  }
+
+  Serial.println("Window icon touched, but window conditions are not active.");
+}
+
+void publishWindowManualSettings(bool manualOverride, const String& manualMode) {
+  copySettingsDraftFromLatestStatus();
+
+  settingsDraft.manualOverride = manualOverride;
+  settingsDraft.manualMode = manualMode;
+
+  publishSettingsCommand();
+}
+
 void publishModeCommand(const String& mode) {
   if (!mqttClient.connected()) {
     Serial.println("Skipping mode publish because MQTT is not connected.");
@@ -1165,6 +1722,7 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
 
   latestStatus.reason = doc["reason"] | "";
   latestStatus.mode = doc["mode"] | "";
+  latestStatus.now = doc["now"] | "";
 
   latestStatus.heatSetPointFahr = doc["heatSetPointFahr"] | NAN;
   latestStatus.heatSetPointDay = doc["heatSetPointDay"] | NAN;
@@ -1175,15 +1733,36 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
   latestStatus.humidityTargetGood = doc["humidityTargetGood"] | NAN;
   latestStatus.humidityTargetFair = doc["humidityTargetFair"] | NAN;
 
+  latestStatus.upTempCalibration = doc["upTempCalibration"] | NAN;
+  latestStatus.upRelHumCalibration = doc["upRelHumCalibration"] | NAN;
+  latestStatus.downTempCalibration = doc["downTempCalibration"] | NAN;
+  latestStatus.downRelHumCalibration = doc["downRelHumCalibration"] | NAN;
+
   latestStatus.manualOverride = doc["manualOverride"] | false;
   latestStatus.manualMode = doc["manualMode"] | "Off";
 
   latestStatus.upstairsTemperature = doc["upstairsTemperature"] | NAN;
+  latestStatus.upstairsRelativeHumidity = doc["upstairsRelativeHumidity"] | NAN;
   latestStatus.upstairsAbsoluteHumidity = doc["upstairsAbsoluteHumidity"] | NAN;
+
+  latestStatus.downstairsTemperature = doc["downstairsTemperature"] | NAN;
+  latestStatus.downstairsRelativeHumidity = doc["downstairsRelativeHumidity"] | NAN;
   latestStatus.downstairsAbsoluteHumidity = doc["downstairsAbsoluteHumidity"] | NAN;
+
   latestStatus.outsideTemperature = doc["outsideTemperature"] | NAN;
   latestStatus.outsideAbsoluteHumidity = doc["outsideAbsoluteHumidity"] | NAN;
+  latestStatus.controlAbsoluteHumidity = doc["controlAbsoluteHumidity"] | NAN;
 
+  latestStatus.coolHoursToday = doc["coolHoursToday"] | NAN;
+  latestStatus.heatHoursToday = doc["heatHoursToday"] | NAN;
+
+  latestStatus.lastHeatStarted = doc["lastHeatStarted"] | "";
+  latestStatus.lastHeatStopped = doc["lastHeatStopped"] | "";
+  latestStatus.lastCoolStarted = doc["lastCoolStarted"] | "";
+  latestStatus.lastCoolStopped = doc["lastCoolStopped"] | "";
+
+  shouldOpenWindows = calculateShouldOpenWindows();
+  updateWindowToggleFromMqtt();
   bool modeChanged = updateSelectedModeFromStatus();
 
   Serial.print("Parsed HVAC status. statusMode=");
@@ -1194,6 +1773,11 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
   Serial.println(pendingMode);
 
   if (currentScreen == SCREEN_SETTINGS) {
+    return;
+  }
+
+  if (currentScreen == SCREEN_STATS) {
+    drawStatsScreen();
     return;
   }
 
@@ -1521,6 +2105,24 @@ SettingTarget getSettingsTargetAtTouch(int x, int y) {
   return SETTING_TARGET_NONE;
 }
 
+bool isStatsTouch(int x, int y) {
+  int half = TOP_ICON_TOUCH_SIZE / 2;
+
+  return x >= STATS_CENTER_X - half &&
+         x <= STATS_CENTER_X + half &&
+         y >= TOP_ICON_CENTER_Y - half &&
+         y <= TOP_ICON_CENTER_Y + half;
+}
+
+bool isWindowBreezeTouch(int x, int y) {
+  int half = TOP_ICON_TOUCH_SIZE / 2;
+
+  return x >= WINDOW_BREEZE_CENTER_X - half &&
+         x <= WINDOW_BREEZE_CENTER_X + half &&
+         y >= TOP_ICON_CENTER_Y - half &&
+         y <= TOP_ICON_CENTER_Y + half;
+}
+
 bool isGearTouch(int x, int y) {
   int half = GEAR_TOUCH_SIZE / 2;
 
@@ -1570,6 +2172,21 @@ void changeSelectedMode(const String& newMode) {
 }
 
 void handleTouchPress(int x, int y) {
+  if (currentScreen == SCREEN_MAIN && isStatsTouch(x, y)) {
+    Serial.println("Stats icon touched.");
+
+    currentScreen = SCREEN_STATS;
+    drawStatsScreen();
+
+    return;
+  }
+
+  if (currentScreen == SCREEN_MAIN && isWindowBreezeTouch(x, y)) {
+    Serial.println("Window breeze icon touched.");
+    handleWindowBreezeTouch();
+    return;
+  }
+
   if (currentScreen == SCREEN_MAIN && isGearTouch(x, y)) {
     Serial.println("Gear/settings touched.");
 
@@ -1586,7 +2203,6 @@ void handleTouchPress(int x, int y) {
   }
 
   if (currentScreen == SCREEN_SETTINGS) {
-
     if (isSettingsExitTouch(x, y)) {
       Serial.println("Settings exit touched.");
 
@@ -1643,8 +2259,23 @@ void handleTouchPress(int x, int y) {
     return;
   }
 
+  if (currentScreen == SCREEN_STATS) {
+    if (isSettingsExitTouch(x, y)) {
+      Serial.println("Stats exit touched.");
+
+      currentScreen = SCREEN_MAIN;
+      drawThermostatScreen();
+
+      return;
+    }
+
+    Serial.println("Stats screen touched.");
+    return;
+  }
+
   int barY = SAFE_Y + SAFE_H - BOTTOM_BAR_H;
   int barBottom = SAFE_Y + SAFE_H - 1;
+
   bool inBottomBar =
     x >= SAFE_X && x < SAFE_X + SAFE_W && y >= barY && y <= barBottom;
 
@@ -1719,6 +2350,15 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
 
+  Serial.print("Free heap: ");
+  Serial.println(ESP.getFreeHeap());
+
+  Serial.print("PSRAM size: ");
+  Serial.println(ESP.getPsramSize());
+
+  Serial.print("Free PSRAM: ");
+  Serial.println(ESP.getFreePsram());
+
   initDisplay();
   initLd2410Out();
 
@@ -1756,5 +2396,5 @@ void loop() {
   }
 
   updateSettingsFlash();
-
+  updateWindSound();
 }

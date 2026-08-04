@@ -1053,7 +1053,7 @@ bool calculateShouldOpenWindows() {
   bool conditionTwo =
     !isnan(latestStatus.outsideAbsoluteHumidity) &&
     !isnan(latestStatus.outsideTemperature) &&
-    latestStatus.outsideAbsoluteHumidity < 20.0 &&  // should be 10
+    latestStatus.outsideAbsoluteHumidity < 10.0 &&
     latestStatus.outsideTemperature > 60.0;
 
   return conditionOne || conditionTwo;

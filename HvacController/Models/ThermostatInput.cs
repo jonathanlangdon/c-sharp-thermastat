@@ -39,16 +39,18 @@ public sealed record ThermostatInput
     public double? DehumidSetUp =>
         CurrentTempFahrUp is null
             ? null
-            : AbsoluteHumidityCalculator.CalculateRelativeHumidityFromGramsPerCubicMeterAndFahrenheit(
-                9.0,
-                CurrentTempFahrUp.Value);
+            : RoundUpToNearestFivePercent(
+                AbsoluteHumidityCalculator.CalculateRelativeHumidityFromGramsPerCubicMeterAndFahrenheit(
+                    9.0,
+                    CurrentTempFahrUp.Value));
 
     public double? DehumidSetDown =>
         CurrentTempFahrDown is null
             ? null
-            : AbsoluteHumidityCalculator.CalculateRelativeHumidityFromGramsPerCubicMeterAndFahrenheit(
-                9.0,
-                CurrentTempFahrDown.Value);
+            : RoundUpToNearestFivePercent(
+                AbsoluteHumidityCalculator.CalculateRelativeHumidityFromGramsPerCubicMeterAndFahrenheit(
+                    9.0,
+                    CurrentTempFahrDown.Value));
 
     public double? AbsoluteHumidityUpstairs =>
         CurrentTempFahrUp is null || RelHumidityUpstairs is null
@@ -63,6 +65,13 @@ public sealed record ThermostatInput
             : AbsoluteHumidityCalculator.CalculateGramsPerCubicMeterFromFahrenheit(
                 CurrentTempFahrDown.Value,
                 RelHumidityDownstairs.Value);
+
+    private static double RoundUpToNearestFivePercent(double value)
+    {
+        var rounded = Math.Ceiling(value / 5.0) * 5.0;
+
+        return Math.Clamp(rounded, 0.0, 100.0);
+    }
 
     public bool ShouldOpenWindows
     {

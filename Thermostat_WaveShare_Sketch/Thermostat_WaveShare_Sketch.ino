@@ -232,6 +232,8 @@ struct HvacStatus {
   double controlAbsoluteHumidity = NAN;
 
   bool shouldOpenWindows = false;
+  double dehumidSetUp = NAN;
+  double dehumidSetDown = NAN;
 
   double upTempCalibration = NAN;
   double upRelHumCalibration = NAN;
@@ -587,44 +589,6 @@ String formatZeroDecimal(double value) {
   }
 
   return String(value, 0);
-}
-
-String roundToFive(double value) {
-  if (isnan(value)) {
-    return "--";
-  }
-
-  int rounded = (int)(ceil(value / 5.0) * 5.0);
-
-  rounded = constrain(rounded, 0, 100);
-
-  return String(rounded);
-}
-
-double absoluteHumidityToRelativeHumidity(
-  double absoluteHumidity,
-  double temperatureFahr) {
-  if (isnan(absoluteHumidity) || isnan(temperatureFahr)) {
-    return NAN;
-  }
-
-  double temperatureC = (temperatureFahr - 32.0) * 5.0 / 9.0;
-  double temperatureK = temperatureC + 273.15;
-
-  double saturationVaporPressure =
-    6.112 * exp((17.67 * temperatureC) / (temperatureC + 243.5));
-
-  double actualVaporPressure =
-    (absoluteHumidity * temperatureK) / 216.7;
-
-  double relativeHumidity =
-    (actualVaporPressure / saturationVaporPressure) * 100.0;
-
-  return constrain(relativeHumidity, 0.0, 100.0);
-}
-
-double relHumFromAbs(double temperatureFahr) {
-  return absoluteHumidityToRelativeHumidity(9.0, temperatureFahr);
 }
 
 String currentActivityText() {
@@ -1063,14 +1027,14 @@ void drawHumidityPanel() {
   String up = "Up: ";
   up += formatOneDecimal(latestStatus.upstairsAbsoluteHumidity);
   up += "  (";
-  up += roundToFive(relHumFromAbs(latestStatus.upstairsTemperature));
+  up += formatZeroDecimal(latestStatus.dehumidSetUp);
   up += ")";
   printAtString(x, y + 50, up);
 
   String down = "Down: ";
   down += formatOneDecimal(latestStatus.downstairsAbsoluteHumidity);
   down += "  (";
-  down += roundToFive(relHumFromAbs(latestStatus.downstairsTemperature));
+  down += formatZeroDecimal(latestStatus.dehumidSetDown);
   down += ")";
   printAtString(x, y + 75, down);
 }
@@ -1788,6 +1752,9 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
   latestStatus.lastCoolStarted = doc["lastCoolStarted"] | "";
   latestStatus.lastCoolStopped = doc["lastCoolStopped"] | "";
   latestStatus.lastMotionDetected = doc["lastMotionDetected"] | "";
+
+  latestStatus.dehumidSetUp = doc["dehumidSetUp"] | NAN;
+  latestStatus.dehumidSetDown = doc["dehumidSetDown"] | NAN;
 
   latestStatus.shouldOpenWindows = doc["shouldOpenWindows"] | false;
   shouldOpenWindows = latestStatus.shouldOpenWindows;

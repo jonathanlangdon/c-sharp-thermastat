@@ -41,6 +41,7 @@ public sealed record ThermostatStatusMessage
     public double? DownstairsAbsoluteHumidity { get; init; }
 
     public double? ControlAbsoluteHumidity { get; init; }
+    public bool ShouldOpenWindows { get; init; }
 
     public double? OutsideTemperature { get; init; }
     public double? OutsideAbsoluteHumidity { get; init; }

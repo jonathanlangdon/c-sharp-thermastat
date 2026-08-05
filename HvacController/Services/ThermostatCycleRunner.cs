@@ -53,6 +53,8 @@ public sealed class ThermostatCycleRunner
             RelHumidityDownstairs =
                 ApplyRelativeHumidityCalibration(rawInput.RelHumidityDownstairs, persisted.DownRelHumCalibration),
 
+            OutsideTemperature = _outsideWeatherState.OutsideTemperature,
+
             LastSensorUpdate =
                 rawInput.LastSensorUpdate ?? persisted.LastSensorUpdate,
 

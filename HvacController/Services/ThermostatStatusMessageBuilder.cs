@@ -54,6 +54,7 @@ public static class ThermostatStatusMessageBuilder
             DownstairsAbsoluteHumidity = input.AbsoluteHumidityDownstairs,
 
             ControlAbsoluteHumidity = input.ControlHumidity,
+            ShouldOpenWindows = input.ShouldOpenWindows,
 
             OutsideTemperature = outsideTemperature,
             OutsideAbsoluteHumidity = input.OutsideAbsoluteHumidity,

@@ -11,6 +11,7 @@ public sealed record ThermostatInput
     public double? RelHumidityDownstairs { get; init; }
 
     public double? OutsideAbsoluteHumidity { get; init; }
+    public double? OutsideTemperature { get; init; }
 
     public DateTime CurrentLocalTime { get; set; } = DateTime.Now;
 
@@ -48,6 +49,28 @@ public sealed record ThermostatInput
             : AbsoluteHumidityCalculator.CalculateGramsPerCubicMeterFromFahrenheit(
                 CurrentTempFahrDown.Value,
                 RelHumidityDownstairs.Value);
+
+    public bool ShouldOpenWindows
+    {
+        get
+        {
+            var conditionOne =
+                CurrentTempFahrUp is not null &&
+                OutsideAbsoluteHumidity is not null &&
+                ControlHumidity is not null &&
+                CurrentTempFahrUp.Value > 70.0 &&
+                OutsideAbsoluteHumidity.Value < 10.0 &&
+                ControlHumidity.Value > 9.0;
+
+            var conditionTwo =
+                OutsideAbsoluteHumidity is not null &&
+                OutsideTemperature is not null &&
+                OutsideAbsoluteHumidity.Value < 10.0 &&
+                OutsideTemperature.Value > 60.0;
+
+            return conditionOne || conditionTwo;
+        }
+    }
 
     public double? ControlHumidity
     {

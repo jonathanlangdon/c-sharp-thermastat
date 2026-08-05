@@ -574,6 +574,14 @@ String formatOneDecimal(double value) {
   return String(value, 1);
 }
 
+String formatZeroDecimal(double value) {
+  if (isnan(value)) {
+    return "--";
+  }
+
+  return String(value, 0);
+}
+
 String currentActivityText() {
 
   if (latestStatus.manualOverride &&
@@ -995,7 +1003,7 @@ void drawLargeTemperature() {
 }
 
 void drawHumidityPanel() {
-  int x = SAFE_X + 290;  // was 268
+  int x = SAFE_X + 270;  // was 268
   int y = SAFE_Y + 90; // was 48
 
   setFontMedium(HVAC_TEXT);
@@ -1009,10 +1017,16 @@ void drawHumidityPanel() {
 
   String up = "Up: ";
   up += formatOneDecimal(latestStatus.upstairsAbsoluteHumidity);
+  up += "  (";
+  up += formatZeroDecimal(latestStatus.upstairsRelativeHumidity);
+  up += ")";
   printAtString(x, y + 50, up);
 
   String down = "Down: ";
   down += formatOneDecimal(latestStatus.downstairsAbsoluteHumidity);
+  down += "  (";
+  down += formatZeroDecimal(latestStatus.downstairsRelativeHumidity);
+  down += ")";
   printAtString(x, y + 75, down);
 }
 

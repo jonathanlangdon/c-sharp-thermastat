@@ -231,6 +231,8 @@ struct HvacStatus {
   double outsideAbsoluteHumidity = NAN;
   double controlAbsoluteHumidity = NAN;
 
+  bool shouldOpenWindows = false;
+
   double upTempCalibration = NAN;
   double upRelHumCalibration = NAN;
   double downTempCalibration = NAN;
@@ -243,6 +245,7 @@ struct HvacStatus {
   String lastHeatStopped = "";
   String lastCoolStarted = "";
   String lastCoolStopped = "";
+  String lastMotionDetected = "";
 
   double humidityTargetFair = NAN;
   double humidityTargetGood = NAN;
@@ -564,6 +567,10 @@ String formatSetPoint(double value) {
 
 String formatBoolOnOff(bool value) {
   return value ? "On" : "Off";
+}
+
+String formatBoolStd(bool value) {
+  return value ? "True" : "False";
 }
 
 String formatOneDecimal(double value) {
@@ -1093,24 +1100,6 @@ bool isWindowReminderTime() {
   return hour >= 6 && hour < 22;
 }
 
-bool calculateShouldOpenWindows() {
-  bool conditionOne =
-    !isnan(latestStatus.upstairsTemperature) &&
-    !isnan(latestStatus.outsideAbsoluteHumidity) &&
-    !isnan(latestStatus.controlAbsoluteHumidity) &&
-    latestStatus.upstairsTemperature > 70.0 &&
-    latestStatus.outsideAbsoluteHumidity < 10.0 &&
-    latestStatus.controlAbsoluteHumidity > 9.0;
-
-  bool conditionTwo =
-    !isnan(latestStatus.outsideAbsoluteHumidity) &&
-    !isnan(latestStatus.outsideTemperature) &&
-    latestStatus.outsideAbsoluteHumidity < 10.0 &&
-    latestStatus.outsideTemperature > 60.0;
-
-  return conditionOne || conditionTwo;
-}
-
 bool isManualFanStatus() {
   return latestStatus.manualOverride &&
          latestStatus.manualMode.equalsIgnoreCase("Fan");
@@ -1359,87 +1348,73 @@ void drawStatsScreen() {
 
   drawStatsColumnRow(
     leftX,
-    startY,
+    startY + (rowGap * 1),
     colW,
-    "Up temp cal",
-    formatOneDecimal(latestStatus.upTempCalibration));
-
-  drawStatsColumnRow(
-    leftX,
-    startY + rowGap,
-    colW,
-    "Up RH cal",
-    formatOneDecimal(latestStatus.upRelHumCalibration));
+    "Motion",
+    formatDateTimeShort(latestStatus.lastMotionDetected));
 
   drawStatsColumnRow(
     leftX,
     startY + (rowGap * 2),
     colW,
-    "Down temp cal",
-    formatOneDecimal(latestStatus.downTempCalibration));
+    "Open Windows",
+    formatBoolStd(latestStatus.shouldOpenWindows));
 
   drawStatsColumnRow(
     leftX,
     startY + (rowGap * 3),
-    colW,
-    "Down RH cal",
-    formatOneDecimal(latestStatus.downRelHumCalibration));
-
-  drawStatsColumnRow(
-    leftX,
-    startY + (rowGap * 4),
     colW,
     "Up temp",
     formatOneDecimal(latestStatus.upstairsTemperature));
 
   drawStatsColumnRow(
     leftX,
-    startY + (rowGap * 5),
+    startY + (rowGap * 4),
     colW,
     "Up RH",
     formatOneDecimal(latestStatus.upstairsRelativeHumidity));
 
   drawStatsColumnRow(
     leftX,
-    startY + (rowGap * 6),
+    startY + (rowGap * 5),
     colW,
     "Up abs hum",
     formatTwoDecimals(latestStatus.upstairsAbsoluteHumidity));
 
   drawStatsColumnRow(
     leftX,
-    startY + (rowGap * 7),
+    startY + (rowGap * 6),
     colW,
     "Cool hrs",
     formatTwoDecimals(latestStatus.coolHoursToday));
 
   drawStatsColumnRow(
+  leftX,
+  startY + (rowGap * 7),
+  colW,
+  "Heat hrs",
+  formatTwoDecimals(latestStatus.heatHoursToday));
+
+  drawStatsColumnRow(
     rightX,
-    startY,
+    startY + (rowGap * 1),
     colW,
     "Down temp",
     formatOneDecimal(latestStatus.downstairsTemperature));
 
   drawStatsColumnRow(
     rightX,
-    startY + rowGap,
+    startY + (rowGap * 2),
     colW,
     "Down RH",
     formatOneDecimal(latestStatus.downstairsRelativeHumidity));
 
   drawStatsColumnRow(
     rightX,
-    startY + (rowGap * 2),
+    startY + (rowGap * 3),
     colW,
     "Down abs hum",
     formatTwoDecimals(latestStatus.downstairsAbsoluteHumidity));
-
-  drawStatsColumnRow(
-    rightX,
-    startY + (rowGap * 3),
-    colW,
-    "Heat hrs",
-    formatTwoDecimals(latestStatus.heatHoursToday));
 
   drawStatsColumnRow(
     rightX,
@@ -1812,8 +1787,11 @@ void onMqttMessage(char* topic, byte* payload, unsigned int length) {
   latestStatus.lastHeatStopped = doc["lastHeatStopped"] | "";
   latestStatus.lastCoolStarted = doc["lastCoolStarted"] | "";
   latestStatus.lastCoolStopped = doc["lastCoolStopped"] | "";
+  latestStatus.lastMotionDetected = doc["lastMotionDetected"] | "";
 
-  shouldOpenWindows = calculateShouldOpenWindows();
+  latestStatus.shouldOpenWindows = doc["shouldOpenWindows"] | false;
+  shouldOpenWindows = latestStatus.shouldOpenWindows;
+  
   updateWindowToggleFromMqtt();
   bool modeChanged = updateSelectedModeFromStatus();
 
@@ -2056,13 +2034,13 @@ void initLd2410Out() {
 }
 
 void pollLd2410Out() {
-  static bool lastMotionDetected = false;
+  static bool pollLastMotionDetected = false;
   static unsigned long lastPrintMs = 0;
 
   motionDetected = digitalRead(LD2410_OUT_PIN) == HIGH;
 
-  if (motionDetected != lastMotionDetected || millis() - lastPrintMs > 10000) {
-    lastMotionDetected = motionDetected;
+  if (motionDetected != pollLastMotionDetected || millis() - lastPrintMs > 10000) {
+    pollLastMotionDetected = motionDetected;
     lastPrintMs = millis();
 
     Serial.print("LD2410 presence OUT: ");

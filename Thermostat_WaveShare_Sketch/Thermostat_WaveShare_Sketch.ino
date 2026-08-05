@@ -582,6 +582,44 @@ String formatZeroDecimal(double value) {
   return String(value, 0);
 }
 
+String roundToFive(double value) {
+  if (isnan(value)) {
+    return "--";
+  }
+
+  int rounded = (int)(ceil(value / 5.0) * 5.0);
+
+  rounded = constrain(rounded, 0, 100);
+
+  return String(rounded);
+}
+
+double absoluteHumidityToRelativeHumidity(
+  double absoluteHumidity,
+  double temperatureFahr) {
+  if (isnan(absoluteHumidity) || isnan(temperatureFahr)) {
+    return NAN;
+  }
+
+  double temperatureC = (temperatureFahr - 32.0) * 5.0 / 9.0;
+  double temperatureK = temperatureC + 273.15;
+
+  double saturationVaporPressure =
+    6.112 * exp((17.67 * temperatureC) / (temperatureC + 243.5));
+
+  double actualVaporPressure =
+    (absoluteHumidity * temperatureK) / 216.7;
+
+  double relativeHumidity =
+    (actualVaporPressure / saturationVaporPressure) * 100.0;
+
+  return constrain(relativeHumidity, 0.0, 100.0);
+}
+
+double relHumFromAbs(double temperatureFahr) {
+  return absoluteHumidityToRelativeHumidity(9.0, temperatureFahr);
+}
+
 String currentActivityText() {
 
   if (latestStatus.manualOverride &&
@@ -1003,8 +1041,8 @@ void drawLargeTemperature() {
 }
 
 void drawHumidityPanel() {
-  int x = SAFE_X + 270;  // was 268
-  int y = SAFE_Y + 90; // was 48
+  int x = SAFE_X + 270;
+  int y = SAFE_Y + 90;
 
   setFontMedium(HVAC_TEXT);
   printAt(x, y, "Humidity");
@@ -1018,14 +1056,14 @@ void drawHumidityPanel() {
   String up = "Up: ";
   up += formatOneDecimal(latestStatus.upstairsAbsoluteHumidity);
   up += "  (";
-  up += formatZeroDecimal(latestStatus.upstairsRelativeHumidity);
+  up += roundToFive(relHumFromAbs(latestStatus.upstairsTemperature));
   up += ")";
   printAtString(x, y + 50, up);
 
   String down = "Down: ";
   down += formatOneDecimal(latestStatus.downstairsAbsoluteHumidity);
   down += "  (";
-  down += formatZeroDecimal(latestStatus.downstairsRelativeHumidity);
+  down += roundToFive(relHumFromAbs(latestStatus.downstairsTemperature));
   down += ")";
   printAtString(x, y + 75, down);
 }

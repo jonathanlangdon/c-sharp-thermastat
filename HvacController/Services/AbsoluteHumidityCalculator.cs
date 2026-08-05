@@ -26,4 +26,24 @@ public static class AbsoluteHumidityCalculator
             temperatureC,
             relativeHumidity);
     }
+
+    public static double CalculateRelativeHumidityFromGramsPerCubicMeterAndFahrenheit(
+        double absoluteHumidity,
+        double temperatureFahr)
+    {
+        var temperatureC = (temperatureFahr - 32.0) * 5.0 / 9.0;
+        var temperatureK = temperatureC + 273.15;
+
+        var saturationVaporPressure =
+            6.112 * Math.Exp((17.67 * temperatureC) / (temperatureC + 243.5));
+
+        var actualVaporPressure =
+            absoluteHumidity * temperatureK / 216.7;
+
+        var relativeHumidity =
+            actualVaporPressure / saturationVaporPressure * 100.0;
+
+        return Math.Clamp(relativeHumidity, 0.0, 100.0);
+    }
+
 }

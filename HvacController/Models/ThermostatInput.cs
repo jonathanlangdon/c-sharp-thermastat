@@ -36,6 +36,20 @@ public sealed record ThermostatInput
     public DateTimeOffset? LastSensorUpdate { get; init; }
     public DateTimeOffset? LastMotionDetected { get; init; }
 
+    public double? DehumidSetUp =>
+        CurrentTempFahrUp is null
+            ? null
+            : AbsoluteHumidityCalculator.CalculateRelativeHumidityFromGramsPerCubicMeterAndFahrenheit(
+                9.0,
+                CurrentTempFahrUp.Value);
+
+    public double? DehumidSetDown =>
+        CurrentTempFahrDown is null
+            ? null
+            : AbsoluteHumidityCalculator.CalculateRelativeHumidityFromGramsPerCubicMeterAndFahrenheit(
+                9.0,
+                CurrentTempFahrDown.Value);
+
     public double? AbsoluteHumidityUpstairs =>
         CurrentTempFahrUp is null || RelHumidityUpstairs is null
             ? null

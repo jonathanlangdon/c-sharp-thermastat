@@ -68,8 +68,7 @@ public sealed record ThermostatInput
 
     private static double RoundUpToNearestFivePercent(double value)
     {
-        var rounded = Math.Ceiling(value / 5.0) * 5.0;
-
+        var rounded = Math.Ceiling((value - 1)/ 5.0) * 5.0;
         return Math.Clamp(rounded, 0.0, 100.0);
     }
 

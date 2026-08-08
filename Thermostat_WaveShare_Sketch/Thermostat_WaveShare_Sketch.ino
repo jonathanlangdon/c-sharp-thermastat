@@ -2001,16 +2001,45 @@ void initLd2410Out() {
 }
 
 void pollLd2410Out() {
-  static bool pollLastMotionDetected = false;
+  static bool rawMotionDetected = false;
+  static bool lastPublishedMotionDetected = false;
+  static unsigned long rawChangedMs = 0;
   static unsigned long lastPrintMs = 0;
 
-  motionDetected = digitalRead(LD2410_OUT_PIN) == HIGH;
+  // Sensitivity setting 2000 = must stay HIGH for at least 2 sec to be a motion
+  // increase motionOn number to make it LESS sensitive
+  const unsigned long motionOnDelayMs = 2000;
+  // motionOff = 1000 = must stay LOW for 10 seconds before motionDetected becomes false.
+  const unsigned long motionOffDelayMs = 10000;
 
-  if (motionDetected != pollLastMotionDetected || millis() - lastPrintMs > 10000) {
-    pollLastMotionDetected = motionDetected;
-    lastPrintMs = millis();
+  bool rawNow = digitalRead(LD2410_OUT_PIN) == HIGH;
+  unsigned long now = millis();
 
-    Serial.print("LD2410 presence OUT: ");
+  if (rawNow != rawMotionDetected) {
+    rawMotionDetected = rawNow;
+    rawChangedMs = now;
+  }
+
+  if (rawMotionDetected &&
+      !motionDetected &&
+      now - rawChangedMs >= motionOnDelayMs) {
+    motionDetected = true;
+  }
+
+  if (!rawMotionDetected &&
+      motionDetected &&
+      now - rawChangedMs >= motionOffDelayMs) {
+    motionDetected = false;
+  }
+
+  if (motionDetected != lastPublishedMotionDetected ||
+      now - lastPrintMs > 10000) {
+    lastPublishedMotionDetected = motionDetected;
+    lastPrintMs = now;
+
+    Serial.print("LD2410 raw OUT: ");
+    Serial.print(rawMotionDetected ? "yes" : "no");
+    Serial.print(" filtered presence: ");
     Serial.println(motionDetected ? "yes" : "no");
   }
 }

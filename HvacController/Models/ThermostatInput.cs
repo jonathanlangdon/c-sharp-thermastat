@@ -66,9 +66,11 @@ public sealed record ThermostatInput
                 CurrentTempFahrDown.Value,
                 RelHumidityDownstairs.Value);
 
+    // round to closest 5 percent for dehumidifier settings -> special rounding
+    // ex) 41.5 rounds to 40 while 41.6 rounds to 45
     private static double RoundUpToNearestFivePercent(double value)
     {
-        var rounded = Math.Ceiling((value - 1)/ 5.0) * 5.0;
+        var rounded = Math.Ceiling((value - 1.5)/ 5.0) * 5.0;
         return Math.Clamp(rounded, 0.0, 100.0);
     }
 

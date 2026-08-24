@@ -82,14 +82,14 @@ public sealed record ThermostatInput
                 CurrentTempFahrUp is not null &&
                 OutsideAbsoluteHumidity is not null &&
                 ControlHumidity is not null &&
-                CurrentTempFahrUp.Value > 70.0 &&
-                OutsideAbsoluteHumidity.Value < 10.0 &&
+                CurrentTempFahrUp.Value > 69.0 &&
+                OutsideAbsoluteHumidity.Value < 9.0 &&
                 ControlHumidity.Value > 9.0;
 
             var conditionTwo =
                 OutsideAbsoluteHumidity is not null &&
                 OutsideTemperature is not null &&
-                OutsideAbsoluteHumidity.Value < 10.0 &&
+                OutsideAbsoluteHumidity.Value < 9.0 &&
                 OutsideTemperature.Value > 60.0;
 
             return conditionOne || conditionTwo;

@@ -41,7 +41,7 @@ public sealed record ThermostatInput
             ? null
             : RoundUpToNearestFivePercent(
                 AbsoluteHumidityCalculator.CalculateRelativeHumidityFromGramsPerCubicMeterAndFahrenheit(
-                    9.0,
+                    HumidityTargetIdeal,
                     CurrentTempFahrUp.Value));
 
     public double? DehumidSetDown =>
@@ -49,7 +49,7 @@ public sealed record ThermostatInput
             ? null
             : RoundUpToNearestFivePercent(
                 AbsoluteHumidityCalculator.CalculateRelativeHumidityFromGramsPerCubicMeterAndFahrenheit(
-                    9.0,
+                    HumidityTargetIdeal,
                     CurrentTempFahrDown.Value));
 
     public double? AbsoluteHumidityUpstairs =>
@@ -82,15 +82,15 @@ public sealed record ThermostatInput
                 CurrentTempFahrUp is not null &&
                 OutsideAbsoluteHumidity is not null &&
                 ControlHumidity is not null &&
-                CurrentTempFahrUp.Value > 69.0 &&
-                OutsideAbsoluteHumidity.Value < 9.0 &&
-                ControlHumidity.Value > 9.0;
+                CurrentTempFahrUp.Value > NightHeatSetPoint &&
+                OutsideAbsoluteHumidity.Value < HumidityTargetIdeal &&
+                ControlHumidity.Value > HumidityTargetIdeal;
 
             var conditionTwo =
                 OutsideAbsoluteHumidity is not null &&
                 OutsideTemperature is not null &&
-                OutsideAbsoluteHumidity.Value < 9.0 &&
-                OutsideTemperature.Value > 60.0;
+                OutsideAbsoluteHumidity.Value < HumidityTargetIdeal &&
+                OutsideTemperature.Value > (NightHeatSetPoint - 5);
 
             return conditionOne || conditionTwo;
         }

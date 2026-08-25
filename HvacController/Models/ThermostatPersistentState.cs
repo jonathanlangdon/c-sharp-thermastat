@@ -10,7 +10,7 @@ public sealed record ThermostatPersistentState
     public double HeatSetPointDay { get; init; } = 70.5;
     public double HeatSetPointNight { get; init; } = 65.0;
 
-    public double HumidityTargetIdeal { get; init; } = 9.0;
+    public double HumidityTargetIdeal { get; init; } = 9.2;
     public double HumidityTargetGood { get; init; } = 10.0;
     public double HumidityTargetFair { get; init; } = 11.0;
 

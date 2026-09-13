@@ -1569,22 +1569,17 @@ void handleWindowBreezeTouch() {
     return;
   }
 
-  if (isWindowPromptActive()) {
-    Serial.println("Window prompt active. Turning on manual fan.");
+  Serial.println("Window icon touched. Turning on manual fan.");
 
-    windowToggle = true;
-    pendingWindowManualOn = true;
-    pendingWindowManualOff = false;
-    pendingWindowManualStartedMs = millis();
+  windowToggle = true;
+  pendingWindowManualOn = true;
+  pendingWindowManualOff = false;
+  pendingWindowManualStartedMs = millis();
 
-    applyManualOverrideLocally(true, "Fan");
-    publishWindowManualSettings(true, "Fan");
+  applyManualOverrideLocally(true, "Fan");
+  publishWindowManualSettings(true, "Fan");
 
-    drawThermostatScreen();
-    return;
-  }
-
-  Serial.println("Window icon touched, but window conditions are not active.");
+  drawThermostatScreen();
 }
 
 void publishWindowManualSettings(bool manualOverride, const String& manualMode) {

@@ -1083,7 +1083,7 @@ bool isWindowPromptActive() {
 }
 
 bool isWindowThemeActive() {
-  return isWindowModeActive() || isWindowPromptActive();
+  return isWindowReminderTime() && shouldOpenWindows;
 }
 
 bool shouldPlayWindSound() {

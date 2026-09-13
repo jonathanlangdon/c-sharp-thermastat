@@ -53,8 +53,8 @@ int currentScreen = SCREEN_MAIN;
 
 #define SETTINGS_EXIT_X SAFE_X
 #define SETTINGS_EXIT_Y SAFE_Y
-#define SETTINGS_EXIT_W 105
-#define SETTINGS_EXIT_H 40
+#define SETTINGS_EXIT_W 90
+#define SETTINGS_EXIT_H 50
 
 #define SETTINGS_ROW_START_Y (SAFE_Y + 4)
 #define SETTINGS_ROW_GAP 32
@@ -100,7 +100,7 @@ int currentScreen = SCREEN_MAIN;
 
 #define SETTINGS_FLASH_INTERVAL_MS 500
 
-#define SETTINGS_UP_ARROW_Y (SAFE_Y + 42)
+#define SETTINGS_UP_ARROW_Y (SAFE_Y + 55)
 #define SETTINGS_DOWN_ARROW_Y (SAFE_Y + 118)
 
 enum SettingTarget {
@@ -1353,7 +1353,7 @@ void drawStatsScreen() {
     HVAC_TEXT);
 
   drawStatsFullRow(
-    SAFE_Y + 52,
+    SAFE_Y + 75,
     "Hvac Status",
     latestStatus.reason);
 

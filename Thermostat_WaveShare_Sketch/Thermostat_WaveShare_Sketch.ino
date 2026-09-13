@@ -283,6 +283,62 @@ const unsigned long mqttRetryIntervalMs = 5000;
 bool wifiWasConnected = false;
 bool mqttWasConnected = false;
 
+void applySettingsDraftLocally() {
+  double oldHeatSetPointDay = latestStatus.heatSetPointDay;
+  double oldHeatSetPointNight = latestStatus.heatSetPointNight;
+  double oldHumidityTargetFair = latestStatus.humidityTargetFair;
+  double oldHumidityTargetGood = latestStatus.humidityTargetGood;
+  double oldHumidityTargetIdeal = latestStatus.humidityTargetIdeal;
+
+  latestStatus.heatSetPointDay = settingsDraft.heatSetPointDay;
+  latestStatus.heatSetPointNight = settingsDraft.heatSetPointNight;
+
+  latestStatus.humidityTargetFair = settingsDraft.humidityTargetFair;
+  latestStatus.humidityTargetGood = settingsDraft.humidityTargetGood;
+  latestStatus.humidityTargetIdeal = settingsDraft.humidityTargetIdeal;
+
+  latestStatus.manualOverride = settingsDraft.manualOverride;
+  latestStatus.manualMode = settingsDraft.manualMode;
+
+  if (!isnan(latestStatus.heatSetPointFahr)) {
+    if (!isnan(oldHeatSetPointDay) &&
+        fabs(latestStatus.heatSetPointFahr - oldHeatSetPointDay) < 0.05) {
+      latestStatus.heatSetPointFahr = settingsDraft.heatSetPointDay;
+    } else if (!isnan(oldHeatSetPointNight) &&
+               fabs(latestStatus.heatSetPointFahr - oldHeatSetPointNight) < 0.05) {
+      latestStatus.heatSetPointFahr = settingsDraft.heatSetPointNight;
+    }
+  }
+
+  if (!isnan(latestStatus.maxAbsHumSetPoint)) {
+    if (!isnan(oldHumidityTargetFair) &&
+        fabs(latestStatus.maxAbsHumSetPoint - oldHumidityTargetFair) < 0.05) {
+      latestStatus.maxAbsHumSetPoint = settingsDraft.humidityTargetFair;
+    } else if (!isnan(oldHumidityTargetGood) &&
+               fabs(latestStatus.maxAbsHumSetPoint - oldHumidityTargetGood) < 0.05) {
+      latestStatus.maxAbsHumSetPoint = settingsDraft.humidityTargetGood;
+    } else if (!isnan(oldHumidityTargetIdeal) &&
+               fabs(latestStatus.maxAbsHumSetPoint - oldHumidityTargetIdeal) < 0.05) {
+      latestStatus.maxAbsHumSetPoint = settingsDraft.humidityTargetIdeal;
+    }
+  }
+
+  if (latestStatus.manualOverride &&
+      latestStatus.manualMode.equalsIgnoreCase("Fan")) {
+    latestStatus.heat = false;
+    latestStatus.cool = false;
+    latestStatus.fan = true;
+    return;
+  }
+
+  if (latestStatus.manualOverride &&
+      latestStatus.manualMode.equalsIgnoreCase("Off")) {
+    latestStatus.heat = false;
+    latestStatus.cool = false;
+    latestStatus.fan = false;
+  }
+}
+
 void applyManualOverrideLocally(bool manualOverride, const String& manualMode) {
   latestStatus.manualOverride = manualOverride;
   latestStatus.manualMode = manualMode;
@@ -2227,6 +2283,7 @@ void handleTouchPress(int x, int y) {
     if (isSettingsExitTouch(x, y)) {
       Serial.println("Settings exit touched.");
 
+      applySettingsDraftLocally();
       publishSettingsCommand();
 
       settingsDraftActive = false;

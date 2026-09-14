@@ -82,15 +82,22 @@ public sealed record ThermostatInput
                 Now.TimeOfDay >= TimeSpan.FromHours(7) &&
                 Now.TimeOfDay < TimeSpan.FromHours(22);
 
-            var conditionToOpenWindows =
-                CurrentTempFahrUp is not null &&
+            var conditionOne =
                 OutsideAbsoluteHumidity is not null &&
-                OutsideTemperature is not null &&
                 OutsideAbsoluteHumidity.Value < (HumidityTargetIdeal - .5) && // nice humidity out
+                CurrentTempFahrUp is not null &&
                 CurrentTempFahrUp.Value > NightHeatSetPoint && // not too cold inside
+                OutsideTemperature is not null &&
                 OutsideTemperature.Value > (NightHeatSetPoint - 5); // not too cold outside
 
-            return isDaytime && conditionToOpenWindows;
+
+            var conditionTwo =
+                OutsideAbsoluteHumidity is not null &&
+                OutsideAbsoluteHumidity.Value < (HumidityTargetIdeal - .5) && // nice humidity out
+                CurrentTempFahrUp is not null &&
+                CurrentTempFahrUp.Value >= DayHeatSetPoint && // inside temp is warm (probably >= 70.5)
+
+            return isDaytime && (conditionOne || conditionTwo);
         }
     }
 

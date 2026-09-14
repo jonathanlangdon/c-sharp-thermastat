@@ -78,21 +78,15 @@ public sealed record ThermostatInput
     {
         get
         {
-            var conditionOne =
+            var conditionToOpenWindows =
                 CurrentTempFahrUp is not null &&
                 OutsideAbsoluteHumidity is not null &&
-                ControlHumidity is not null &&
-                CurrentTempFahrUp.Value > NightHeatSetPoint &&
-                OutsideAbsoluteHumidity.Value < HumidityTargetIdeal &&
-                ControlHumidity.Value > HumidityTargetIdeal;
-
-            var conditionTwo =
-                OutsideAbsoluteHumidity is not null &&
                 OutsideTemperature is not null &&
-                OutsideAbsoluteHumidity.Value < HumidityTargetIdeal &&
-                OutsideTemperature.Value > (NightHeatSetPoint - 5);
+                OutsideAbsoluteHumidity.Value < (HumidityTargetIdeal - .5) && // nice humidity out
+                CurrentTempFahrUp.Value > NightHeatSetPoint && // not too cold inside
+                OutsideTemperature.Value > (NightHeatSetPoint - 5); // not too cold outside
 
-            return conditionOne || conditionTwo;
+            return conditionToOpenWindows;
         }
     }
 

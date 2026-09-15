@@ -95,7 +95,7 @@ public sealed record ThermostatInput
                 OutsideAbsoluteHumidity is not null &&
                 OutsideAbsoluteHumidity.Value < (HumidityTargetIdeal - .5) && // nice humidity out
                 CurrentTempFahrUp is not null &&
-                CurrentTempFahrUp.Value >= DayHeatSetPoint && // inside temp is warm (probably >= 70.5)
+                CurrentTempFahrUp.Value >= DayHeatSetPoint; // inside temp is warm (probably >= 70.5)
 
             return isDaytime && (conditionOne || conditionTwo);
         }

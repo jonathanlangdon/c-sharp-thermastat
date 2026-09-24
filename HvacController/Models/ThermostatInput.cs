@@ -84,7 +84,7 @@ public sealed record ThermostatInput
 
             var conditionOne =
                 OutsideAbsoluteHumidity is not null &&
-                OutsideAbsoluteHumidity.Value < (HumidityTargetIdeal - .5) && // nice humidity out
+                OutsideAbsoluteHumidity.Value < (HumidityTargetIdeal - 1) && // nice humidity out
                 CurrentTempFahrUp is not null &&
                 CurrentTempFahrUp.Value > NightHeatSetPoint && // not too cold inside
                 OutsideTemperature is not null &&

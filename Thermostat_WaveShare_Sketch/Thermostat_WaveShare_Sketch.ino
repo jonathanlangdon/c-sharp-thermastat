@@ -300,6 +300,17 @@ void applySettingsDraftLocally() {
   latestStatus.manualOverride = settingsDraft.manualOverride;
   latestStatus.manualMode = settingsDraft.manualMode;
 
+  // If the user disabled the manual fan lock from the Settings page,
+  // also clear the local window-mode latch immediately.
+  if (windowToggle &&
+      (!settingsDraft.manualOverride ||
+      !settingsDraft.manualMode.equalsIgnoreCase("Fan"))) {
+
+    windowToggle = false;
+    pendingWindowManualOn = false;
+    pendingWindowManualOff = false;
+  }
+
   if (!isnan(latestStatus.heatSetPointFahr)) {
     if (!isnan(oldHeatSetPointDay) &&
         fabs(latestStatus.heatSetPointFahr - oldHeatSetPointDay) < 0.05) {
@@ -998,10 +1009,41 @@ void drawStatsIcon() {
 }
 
 void drawWindowBreezeIcon() {
-  drawTopIcon(
-    WINDOW_BREEZE_CENTER_X,
-    TOP_ICON_CENTER_Y,
-    windowBreezeBitmap);
+  int x = WINDOW_BREEZE_CENTER_X - (TOP_ICON_BITMAP_W / 2);
+  int y = TOP_ICON_CENTER_Y - (TOP_ICON_BITMAP_H / 2);
+
+  // Normal inactive appearance.
+  uint16_t iconColor = HVAC_TEXT;
+
+  if (isWindowModeActive()) {
+    uint16_t circleColor;
+
+    if (isWindowThemeActive()) {
+      // White screen:
+      // blue circle with white icon.
+      circleColor = HVAC_WINDOW_TEXT;
+      iconColor = HVAC_NORMAL_TEXT;
+    } else {
+      // Dark screen:
+      // white circle with black icon.
+      circleColor = HVAC_NORMAL_TEXT;
+      iconColor = HVAC_NORMAL_BG;
+    }
+
+    gfx->fillCircle(
+      WINDOW_BREEZE_CENTER_X,
+      TOP_ICON_CENTER_Y,
+      26,
+      circleColor);
+  }
+
+  gfx->drawBitmap(
+    x,
+    y,
+    windowBreezeBitmap,
+    TOP_ICON_BITMAP_W,
+    TOP_ICON_BITMAP_H,
+    iconColor);
 }
 
 void drawTopBar() {
@@ -1096,12 +1138,64 @@ void drawHumidityPanel() {
 }
 
 void drawCurrentActivity() {
-  int x = SAFE_X + 10;  // was 268
+  int x = SAFE_X + 10;
   int y = SAFE_Y + 170;
+
+  String activity = currentActivityText();
 
   setFontSmall(HVAC_TEXT);
 
-  String activity = currentActivityText();
+  // Highlight Manual Fan only when it was activated
+  // through the window/manual-fan-lock mode.
+  if (isWindowModeActive() &&
+      latestStatus.manualOverride &&
+      latestStatus.manualMode.equalsIgnoreCase("Fan")) {
+
+    uint16_t highlightBackground;
+    uint16_t highlightText;
+
+    if (isWindowThemeActive()) {
+      // White screen:
+      // blue background with white text.
+      highlightBackground = HVAC_WINDOW_TEXT;
+      highlightText = HVAC_NORMAL_TEXT;
+    } else {
+      // Dark screen:
+      // white background with black text.
+      highlightBackground = HVAC_NORMAL_TEXT;
+      highlightText = HVAC_NORMAL_BG;
+    }
+
+    int16_t x1;
+    int16_t y1;
+    uint16_t textW;
+    uint16_t textH;
+
+    gfx->getTextBounds(
+      activity.c_str(),
+      x,
+      y,
+      &x1,
+      &y1,
+      &textW,
+      &textH);
+
+    const int padX = 8;
+    const int padY = 5;
+
+    gfx->fillRoundRect(
+      x1 - padX,
+      y1 - padY,
+      textW + (padX * 2),
+      textH + (padY * 2),
+      5,
+      highlightBackground);
+
+    setFontSmall(highlightText);
+    printAtString(x, y, activity);
+
+    return;
+  }
 
   printAtString(x, y, activity);
 }

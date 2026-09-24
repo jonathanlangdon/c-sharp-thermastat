@@ -185,7 +185,7 @@ public sealed class ThermostatEngine
         var targetHumidity = GetCoolingHumidityTarget(input);
 
         return MinimumOffSatisfied(input.Now, state.LastCoolStopped) &&
-            input.ControlHumidity >= targetHumidity;
+            input.ControlHumidity > targetHumidity;
     }
 
     private bool MinimumRunSatisfied(

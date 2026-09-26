@@ -7,12 +7,12 @@ public sealed record ThermostatPersistentState
 
     public HvacMode Mode { get; init; } = HvacMode.Heat;
 
-    public double HeatSetPointDay { get; init; } = 70.5;
+    public double HeatSetPointDay { get; init; } = 70;
     public double HeatSetPointNight { get; init; } = 65.0;
 
-    public double HumidityTargetIdeal { get; init; } = 9.2;
-    public double HumidityTargetGood { get; init; } = 10.0;
-    public double HumidityTargetFair { get; init; } = 11.0;
+    public double HumidityTargetIdeal { get; init; } = 9.9;
+    public double HumidityTargetGood { get; init; } = 10.4;
+    public double HumidityTargetFair { get; init; } = 10.9;
 
     public bool ManualOverride { get; init; }
     public ManualMode ManualMode { get; init; } = ManualMode.Off;

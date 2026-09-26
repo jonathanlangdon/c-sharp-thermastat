@@ -84,18 +84,18 @@ public sealed record ThermostatInput
 
             var conditionOne =
                 OutsideAbsoluteHumidity is not null &&
-                OutsideAbsoluteHumidity.Value < (HumidityTargetIdeal - 1) && // nice humidity out
+                OutsideAbsoluteHumidity.Value < (HumidityTargetIdeal - 1) && // nice humidity out (<9)
                 CurrentTempFahrUp is not null &&
-                CurrentTempFahrUp.Value > NightHeatSetPoint && // not too cold inside
+                CurrentTempFahrUp.Value > (DayHeatSetPoint - 2) && // not too cold inside (>68)
                 OutsideTemperature is not null &&
-                OutsideTemperature.Value > (NightHeatSetPoint - 5); // not too cold outside
+                OutsideTemperature.Value >= (NightHeatSetPoint - 5); // not too cold outside (>=60)
 
 
             var conditionTwo =
                 OutsideAbsoluteHumidity is not null &&
-                OutsideAbsoluteHumidity.Value < (HumidityTargetIdeal - .5) && // nice humidity out
+                OutsideAbsoluteHumidity.Value < (HumidityTargetIdeal - 1) && // nice humidity out (<9)
                 CurrentTempFahrUp is not null &&
-                CurrentTempFahrUp.Value > DayHeatSetPoint + .5; // inside temp is warm (probably >= 70.5)
+                CurrentTempFahrUp.Value > DayHeatSetPoint + .5; // inside temp is warm (probably > 70.5)
 
             return isDaytime && (conditionOne || conditionTwo);
         }

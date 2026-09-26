@@ -82,6 +82,7 @@ public sealed record ThermostatInput
                 Now.TimeOfDay >= TimeSpan.FromHours(7) &&
                 Now.TimeOfDay < TimeSpan.FromHours(22);
 
+            // Nice outside, but don't make it cold inside
             var conditionOne =
                 OutsideAbsoluteHumidity is not null &&
                 OutsideAbsoluteHumidity.Value < (HumidityTargetIdeal - 1) && // nice humidity out (<9)
@@ -90,12 +91,12 @@ public sealed record ThermostatInput
                 OutsideTemperature is not null &&
                 OutsideTemperature.Value >= (NightHeatSetPoint - 5); // not too cold outside (>=60)
 
-
+            // Open Windows no matter what temp inside if the humidity is bad
             var conditionTwo =
                 OutsideAbsoluteHumidity is not null &&
                 OutsideAbsoluteHumidity.Value < (HumidityTargetIdeal - 1) && // nice humidity out (<9)
-                CurrentTempFahrUp is not null &&
-                CurrentTempFahrUp.Value > DayHeatSetPoint + .5; // inside temp is warm (probably > 70.5)
+                ControlHumidity is not null &&
+                ControlHumidity > HumidityTargetIdeal; // too humid inside (> ideal)
 
             return isDaytime && (conditionOne || conditionTwo);
         }
